@@ -1,0 +1,236 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Condition {
+  NEW
+  USED
+  BARELY_USED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELED
+  RETURNED
+  REFUNDED
+}
+
+model User {
+  id                Int                 @id @default(autoincrement())
+  userName          String
+  password          String
+  phoneNumber       String              @unique
+  email             String              @unique
+  loyalCustomer     Boolean             @default(false)
+  amountSpent       Int                 @default(0)
+  role              Role                @default(USER)
+  seller            Seller?
+  Adresses          Adress[]
+  shoppingCart      ShoppingCart?
+  favoritedProducts FavoritedProducts[]
+  orders            Order[]
+  comments          Comment[]
+  commentVotes      CommentVote[]
+}
+
+model Seller {
+  id        Int               @id @default(autoincrement())
+  storeName String
+  trusted   Boolean           @default(false)
+  userId    Int               @unique
+  user      User              @relation(fields: [userId], references: [id])
+  listings  SellerInventory[]
+}
+
+model Adress {
+  id         Int     @id @default(autoincrement())
+  country    String
+  city       String
+  adressLine String
+  postalCode String
+  isActive   Boolean @default(false)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+  orders     Order[]
+
+  @@index([userId])
+}
+
+model ShoppingCart {
+  id        Int        @id @default(autoincrement())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int        @unique
+  cartItems CartItem[]
+}
+
+model SellerInventory {
+  id                 Int                 @id @default(autoincrement())
+  quantity           Int
+  price              Int
+  condition          Condition           @default(NEW)
+  isActive           Boolean             @default(true)
+  sellerId           Int
+  productId          Int
+  seller             Seller              @relation(fields: [sellerId], references: [id])
+  product            Product             @relation(fields: [productId], references: [id])
+  cartItems          CartItem[]
+  favoritedProducts  FavoritedProducts[]
+  orderItems         OrderItems[]
+  comments           Comment[]
+  promotionsProducts PromotionListing[]
+
+  @@unique([sellerId, productId, condition])
+  @@index([productId])
+}
+
+model Product {
+  id          Int               @id @default(autoincrement())
+  productName String
+  description String
+  rating      Float?            @default(0)
+  attributes  Json              @default("{}")
+  images      Json              @default("[]")
+  videos      Json              @default("[]")
+  categories  ProductCategory[]
+  listings    SellerInventory[]
+}
+
+model ProductCategory {
+  id           Int       @id @default(autoincrement())
+  categoryName String    @unique
+  product      Product[]
+}
+
+model CartItem {
+  id                Int             @id @default(autoincrement())
+  quantity          Int
+  shoppingCart      ShoppingCart    @relation(fields: [shoppingCartId], references: [id], onDelete: Cascade)
+  shoppingCartId    Int
+  sellerInventory   SellerInventory @relation(fields: [sellerInventoryId], references: [id])
+  sellerInventoryId Int
+
+  @@unique([shoppingCartId, sellerInventoryId])
+  @@index([sellerInventoryId])
+}
+
+model FavoritedProducts {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  listingId Int
+  listing   SellerInventory @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([listingId])
+}
+
+model Order {
+  id          Int          @id @default(autoincrement())
+  orderDate   DateTime     @default(now())
+  paidAt      DateTime?
+  deliveredAt DateTime?
+  userId      Int
+  addressId   Int
+  user        User         @relation(fields: [userId], references: [id])
+  address     Adress       @relation(fields: [addressId], references: [id])
+  orderItems  OrderItems[]
+
+  @@index([userId])
+  @@index([addressId])
+}
+
+model OrderItems {
+  id              Int              @id @default(autoincrement())
+  unitPrice       Int
+  quantity        Int
+  discountPercent Int              @default(0)
+  orderStatus     OrderStatus      @default(PENDING_PAYMENT)
+  orderId         Int
+  listingId       Int
+  promotionId     Int?
+  listing         SellerInventory  @relation(fields: [listingId], references: [id])
+  order           Order            @relation(fields: [orderId], references: [id])
+  promotion       Promotion?       @relation(fields: [promotionId], references: [id])
+  warranty        ProductWarranty?
+
+  @@unique([orderId, listingId])
+  @@index([listingId])
+}
+
+model Comment {
+  id        Int             @id @default(autoincrement())
+  rating    Float
+  massage   String
+  createdAt DateTime        @default(now())
+  images    Json            @default("[]")
+  videos    Json            @default("[]")
+  listingId Int
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   SellerInventory @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  votes     CommentVote[]
+
+  @@unique([listingId, userId])
+  @@index([userId])
+}
+
+model CommentVote {
+  commentId Int
+  userId    Int
+  value     Int
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@index([userId])
+}
+
+model ProductWaranty {
+  id             Int        @id @default(autoincrement())
+  warrantyName   String
+  dateIssued     DateTime   @default(now())
+  expirationDate DateTime
+  expired        Boolean    @default(false)
+  orderItemId    Int        @unique
+  orderItem      OrderItems @relation(fields: [orderItemId], references: [id])
+}
+
+model Promotions {
+  id                 Int                @id @default(autoincrement())
+  name               String
+  startDate          DateTime           @default(now())
+  endDate            DateTime
+  promotionsProducts PromotionListing[]
+  orderItems         OrderItem[]
+}
+
+model PromotionListing {
+  id          Int             @id @default(autoincrement())
+  discount    Int
+  promotionId Int
+  promotion   Promotions      @relation(fields: [promotionId], references: [id])
+  listingId   Int
+  listing     SellerInventory @relation(fields: [listingId], references: [id])
+
+  @@unique([promotionId, listingId])
+  @@index([listingId])
+}

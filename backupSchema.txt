@@ -1,0 +1,279 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Condition {
+  NEW
+  USED
+  BARELY_USED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELED
+  RETURNED
+  REFUNDED
+}
+
+// ---------------------------------------------------------------------------
+// Users, sellers, addresses
+// ---------------------------------------------------------------------------
+
+model User {
+  id               Int               @id @default(autoincrement())
+  userName         String
+  passwordHash     String // bcrypt / argon2 hash, never plain text
+  phoneNumber      String            @unique
+  email            String            @unique
+  loyalCustomer    Boolean           @default(false) // cached, update together with orders
+  amountSpent      Int               @default(0) // cents, cached, update together with orders
+  role             Role              @default(USER)
+  deletedAt        DateTime? // soft delete: keeps orders and reviews intact
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  seller           Seller?
+  addresses        Address[]
+  shoppingCart     ShoppingCart?
+  favoriteProducts FavoriteProduct[]
+  orders           Order[]
+  comments         Comment[]
+  commentVotes     CommentVote[]
+}
+
+model Seller {
+  id        Int               @id @default(autoincrement())
+  storeName String            @unique
+  trusted   Boolean           @default(false)
+  userId    Int               @unique
+  user      User              @relation(fields: [userId], references: [id])
+  listings  SellerInventory[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+// Treat addresses as immutable: to "edit" one, create a new row and set the
+// old one isActive = false, so past orders keep the address they shipped to.
+model Address {
+  id          Int      @id @default(autoincrement())
+  country     String
+  city        String
+  addressLine String
+  postalCode  String
+  isActive    Boolean  @default(true)
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders      Order[]
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Catalog and listings
+// ---------------------------------------------------------------------------
+
+model ProductCategory {
+  id           Int       @id @default(autoincrement())
+  categoryName String    @unique
+  products     Product[]
+}
+
+model Product {
+  id          Int               @id @default(autoincrement())
+  productName String
+  description String
+  rating      Float? // null = unrated; derive from Comment.rating
+  attributes  Json              @default("{}")
+  images      Json              @default("[]")
+  videos      Json              @default("[]")
+  categories  ProductCategory[]
+  listings    SellerInventory[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+// One seller's offer of one product (price, stock, condition).
+// This is the Seller <-> Product many-to-many table.
+// Never hard-delete: set isActive = false so orders, reviews and favorites survive.
+model SellerInventory {
+  id                Int               @id @default(autoincrement())
+  quantity          Int
+  price             Int // cents
+  condition         Condition         @default(NEW)
+  isActive          Boolean           @default(true)
+  sellerId          Int
+  productId         Int
+  seller            Seller            @relation(fields: [sellerId], references: [id])
+  product           Product           @relation(fields: [productId], references: [id])
+  cartItems         CartItem[]
+  favoriteProducts  FavoriteProduct[]
+  orderItems        OrderItem[]
+  comments          Comment[]
+  promotionListings PromotionListing[]
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@unique([sellerId, productId, condition])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Cart and favorites
+// ---------------------------------------------------------------------------
+
+model ShoppingCart {
+  id        Int        @id @default(autoincrement())
+  userId    Int        @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cartItems CartItem[]
+}
+
+model CartItem {
+  id                Int             @id @default(autoincrement())
+  quantity          Int
+  shoppingCartId    Int
+  sellerInventoryId Int
+  shoppingCart      ShoppingCart    @relation(fields: [shoppingCartId], references: [id], onDelete: Cascade)
+  sellerInventory   SellerInventory @relation(fields: [sellerInventoryId], references: [id], onDelete: Cascade)
+
+  @@unique([shoppingCartId, sellerInventoryId])
+  @@index([sellerInventoryId])
+}
+
+model FavoriteProduct {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  listingId Int
+  createdAt DateTime        @default(now())
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   SellerInventory @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([listingId])
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  orderDate   DateTime    @default(now())
+  paidAt      DateTime? // null = not paid yet
+  deliveredAt DateTime? // null = not delivered yet
+  userId      Int
+  addressId   Int
+  user        User        @relation(fields: [userId], references: [id])
+  address     Address     @relation(fields: [addressId], references: [id])
+  orderItems  OrderItem[]
+
+  @@index([userId])
+  @@index([addressId])
+}
+
+// Total of a line = unitPrice * quantity * (100 - discountPercent) / 100.
+// unitPrice is the listing price at purchase time, BEFORE any discount.
+model OrderItem {
+  id              Int              @id @default(autoincrement())
+  unitPrice       Int // cents, snapshot of SellerInventory.price at purchase
+  quantity        Int
+  discountPercent Int              @default(0) // snapshot of the applied discount
+  status          OrderStatus      @default(PENDING_PAYMENT)
+  orderId         Int
+  listingId       Int
+  promotionId     Int? // which promotion was applied, if any
+  order           Order            @relation(fields: [orderId], references: [id])
+  listing         SellerInventory  @relation(fields: [listingId], references: [id])
+  promotion       Promotion?       @relation(fields: [promotionId], references: [id])
+  warranty        ProductWarranty?
+
+  @@unique([orderId, listingId])
+  @@index([listingId])
+  @@index([promotionId])
+}
+
+model ProductWarranty {
+  id             Int       @id @default(autoincrement())
+  warrantyName   String
+  dateIssued     DateTime  @default(now())
+  expirationDate DateTime // "expired" is computed: expirationDate < now()
+  orderItemId    Int       @unique
+  orderItem      OrderItem @relation(fields: [orderItemId], references: [id])
+}
+
+// ---------------------------------------------------------------------------
+// Reviews
+// ---------------------------------------------------------------------------
+
+// Reviews are per listing, so they reflect the specific seller's experience.
+// Seller reputation = average rating over that seller's listings.
+// Product rating    = average rating over all listings of the product.
+model Comment {
+  id        Int             @id @default(autoincrement())
+  rating    Int // 1-5 (CHECK in checks.sql)
+  message   String
+  images    Json            @default("[]")
+  videos    Json            @default("[]")
+  createdAt DateTime        @default(now())
+  listingId Int
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id])
+  listing   SellerInventory @relation(fields: [listingId], references: [id])
+  votes     CommentVote[]
+
+  @@unique([listingId, userId])
+  @@index([userId])
+}
+
+model CommentVote {
+  commentId Int
+  userId    Int
+  value     Int // 1 or -1 (CHECK in checks.sql)
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Promotions
+// ---------------------------------------------------------------------------
+
+model Promotion {
+  id         Int                @id @default(autoincrement())
+  name       String
+  startDate  DateTime           @default(now())
+  endDate    DateTime
+  listings   PromotionListing[]
+  orderItems OrderItem[]
+}
+
+model PromotionListing {
+  id              Int             @id @default(autoincrement())
+  discountPercent Int // 1-100 (CHECK in checks.sql)
+  promotionId     Int
+  listingId       Int
+  promotion       Promotion       @relation(fields: [promotionId], references: [id])
+  listing         SellerInventory @relation(fields: [listingId], references: [id])
+
+  @@unique([promotionId, listingId])
+  @@index([listingId])
+}
