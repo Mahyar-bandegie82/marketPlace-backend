@@ -169,8 +169,8 @@ model OrderItems {
   promotionId     Int?
   listing         SellerInventory  @relation(fields: [listingId], references: [id])
   order           Order            @relation(fields: [orderId], references: [id])
-  promotion       Promotion?       @relation(fields: [promotionId], references: [id])
-  warranty        ProductWarranty?
+  promotion       Promotions?       @relation(fields: [promotionId], references: [id])
+  warranty        ProductWaranty?
 
   @@unique([orderId, listingId])
   @@index([listingId])
@@ -220,7 +220,7 @@ model Promotions {
   startDate          DateTime           @default(now())
   endDate            DateTime
   promotionsProducts PromotionListing[]
-  orderItems         OrderItem[]
+  orderItems         OrderItems[]
 }
 
 model PromotionListing {
