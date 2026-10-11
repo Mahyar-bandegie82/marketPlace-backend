@@ -35,18 +35,18 @@ enum OrderStatus {
 }
 
 model User {
-  id                Int                 @id @default(autoincrement())
+  id                Int                @id @default(autoincrement())
   userName          String
   password          String
-  phoneNumber       String              @unique
-  email             String              @unique
-  loyalCustomer     Boolean             @default(false)
-  amountSpent       Int                 @default(0)
-  role              Role                @default(USER)
+  phoneNumber       String             @unique
+  email             String             @unique
+  loyalCustomer     Boolean            @default(false)
+  amountSpent       Int                @default(0)
+  role              Role               @default(USER)
   seller            Seller?
-  Adresses          Adress[]
+  Addresses         Address[]
   shoppingCart      ShoppingCart?
-  favoritedProducts FavoritedProducts[]
+  favouriteProducts FavouriteProducts[]
   orders            Order[]
   comments          Comment[]
   commentVotes      CommentVote[]
@@ -61,16 +61,16 @@ model Seller {
   listings  SellerInventory[]
 }
 
-model Adress {
-  id         Int     @id @default(autoincrement())
-  country    String
-  city       String
-  adressLine String
-  postalCode String
-  isActive   Boolean @default(false)
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     Int
-  orders     Order[]
+model Address {
+  id          Int     @id @default(autoincrement())
+  country     String
+  city        String
+  addressLine String
+  postalCode  String
+  isActive    Boolean @default(false)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  orders      Order[]
 
   @@index([userId])
 }
@@ -93,7 +93,7 @@ model SellerInventory {
   seller             Seller              @relation(fields: [sellerId], references: [id])
   product            Product             @relation(fields: [productId], references: [id])
   cartItems          CartItem[]
-  favoritedProducts  FavoritedProducts[]
+  favouriteProducts  FavouriteProducts[]
   orderItems         OrderItems[]
   comments           Comment[]
   promotionsProducts PromotionListing[]
@@ -132,7 +132,7 @@ model CartItem {
   @@index([sellerInventoryId])
 }
 
-model FavoritedProducts {
+model FavouriteProducts {
   id        Int             @id @default(autoincrement())
   userId    Int
   listingId Int
@@ -151,7 +151,7 @@ model Order {
   userId      Int
   addressId   Int
   user        User         @relation(fields: [userId], references: [id])
-  address     Adress       @relation(fields: [addressId], references: [id])
+  address     Address       @relation(fields: [addressId], references: [id])
   orderItems  OrderItems[]
 
   @@index([userId])
@@ -159,17 +159,17 @@ model Order {
 }
 
 model OrderItems {
-  id              Int              @id @default(autoincrement())
+  id              Int             @id @default(autoincrement())
   unitPrice       Int
   quantity        Int
-  discountPercent Int              @default(0)
-  orderStatus     OrderStatus      @default(PENDING_PAYMENT)
+  discountPercent Int             @default(0)
+  orderStatus     OrderStatus     @default(PENDING_PAYMENT)
   orderId         Int
   listingId       Int
   promotionId     Int?
-  listing         SellerInventory  @relation(fields: [listingId], references: [id])
-  order           Order            @relation(fields: [orderId], references: [id])
-  promotion       Promotions?       @relation(fields: [promotionId], references: [id])
+  listing         SellerInventory @relation(fields: [listingId], references: [id])
+  order           Order           @relation(fields: [orderId], references: [id])
+  promotion       Promotions?     @relation(fields: [promotionId], references: [id])
   warranty        ProductWaranty?
 
   @@unique([orderId, listingId])
