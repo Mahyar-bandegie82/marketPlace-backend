@@ -16,6 +16,19 @@ async function userExistence(json) {
     }
 }
 
+export async function getProfile(id) {
+    try {
+        const user = await prisma.user.findUnique({
+            where : {id : id}
+        })
+        if (!user) return {error: "user not found"};
+        return user
+    } catch (error) {
+        console.log(error)
+        return {error: error.message}
+    }
+}
+
 export async function signUp(json) {
     try {
         const doesUserExist = await userExistence(json);
@@ -29,12 +42,13 @@ export async function signUp(json) {
                     password: hashedPassword,
                     phoneNumber: json.phoneNumber,
                     email: json.email,
+                    refreshToken: json.refreshToken,
                 }
             });
         }
     } catch (error) {
         console.error(error)
-        return {error: error.message};
+        return {error: error.message}
     }
 }
 
@@ -43,6 +57,7 @@ export async function login(json) {
         const user = await prisma.user.findUnique({
             where: {phoneNumber: json.phoneNumber},
         })
+
         if (!user) {
             throw new Error("user does not exist");
         }
@@ -53,6 +68,40 @@ export async function login(json) {
         return user;
     } catch (error) {
         console.error(error)
-        return {error: error.message};
+        return {error: error.message}
+    }
+}
+
+export async function addRefreshToken(refreshToken, id) {
+    try {
+        const output = await prisma.user.update({
+            where: {id: id},
+            data : {
+                refreshToken: {push : refreshToken},
+            }
+        })
+    } catch (error) {
+        console.error(error)
+        return {error: error.message}
+    }
+}
+
+export async function changeUserInfo(userId, json){
+    try {
+        const originalUser = await getProfile(userId);
+        const user = prisma.user.update({
+            where: {id: userId},
+            data : {
+                userName: json.userName ?? originalUser.userName,
+                phoneNumber: json.phoneNumber ?? originalUser.phoneNumber,
+                password: json.password ?? originalUser.password,
+                email: json.email ?? originalUser.email
+            }
+        })
+
+        return user;
+    } catch (error) {
+        console.error(error)
+        return {error: error.message}
     }
 }

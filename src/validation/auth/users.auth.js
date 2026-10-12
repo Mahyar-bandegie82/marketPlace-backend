@@ -65,18 +65,12 @@ const changeCredentialsSchema = Joi.object({
         userName: userName,
         phoneNumber: phoneNumber,
         password: newPassword,
+        email: email,
     }).min(1).required().messages({
         "object.min":
             "changes must contain at least one of: userName, phoneNumber, password",
     }),
 })
-    .custom((value, helpers) => {
-        if (value.changes.password !== undefined && value.changes.password === value.password) {
-            return helpers.error("changes.samePassword");
-        }
-        return value;
-    }).messages({
-        "changes.samePassword": "the new password must be different from the current one",
-    });
+
 
 export { loginSchema, changeCredentialsSchema, signUpSchema };

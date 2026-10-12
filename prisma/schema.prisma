@@ -35,14 +35,15 @@ enum OrderStatus {
 }
 
 model User {
-  id                Int                @id @default(autoincrement())
+  id                Int                 @id @default(autoincrement())
   userName          String
   password          String
-  phoneNumber       String             @unique
-  email             String             @unique
-  loyalCustomer     Boolean            @default(false)
-  amountSpent       Int                @default(0)
-  role              Role               @default(USER)
+  phoneNumber       String              @unique
+  email             String              @unique
+  refreshToken      String[]
+  loyalCustomer     Boolean             @default(false)
+  amountSpent       Int                 @default(0)
+  role              Role                @default(USER)
   seller            Seller?
   Addresses         Address[]
   shoppingCart      ShoppingCart?
@@ -151,7 +152,7 @@ model Order {
   userId      Int
   addressId   Int
   user        User         @relation(fields: [userId], references: [id])
-  address     Address       @relation(fields: [addressId], references: [id])
+  address     Address      @relation(fields: [addressId], references: [id])
   orderItems  OrderItems[]
 
   @@index([userId])
