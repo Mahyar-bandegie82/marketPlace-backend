@@ -1,121 +1,100 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import dotenv from "dotenv";
+import createError from "http-errors";
 import {generateAccessToken, generateRefreshToken, verifyJoi} from "../../../../helper/helper.js"
 import {
     signUp,
     login,
-    getProfile,
     changeUserInfo,
-    addRefreshToken, getRefreshTokenByHash, deleteRefreshToken
+    addRefreshToken,
+    getRefreshTokenByHash,
+    deleteRefreshToken,
+    sanitizeUser
 } from "../../../../services/auth/user.auth.services.js";
 import {signUpSchema, loginSchema, changeCredentialsSchema} from "../../../../validation/auth/users.auth.js"
 import {accessVerification} from "../../../middleware/authMiddleware.js";
-import dotenv from "dotenv";
+
 dotenv.config();
-
-import crypto from "crypto";
-
-const app = express();
 
 const router = express.Router();
 
+const REFRESH_COOKIE_OPTIONS = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+};
 
+// throws a 400 if the body doesn't match the schema, otherwise returns the validated value
+function validate(schema, body) {
+    const joi = verifyJoi(schema, body);
+    if (joi.error) throw createError(400, String(joi.error.message ?? joi.error));
+    return joi.value;
+}
 
 router.put('/refresh', async (req, res) => {
-    try {
-        const token = req.cookies?.refreshToken;
-        if (!token) return res.status(401).send("No token provided");
-        const decode = jwt.verify(token, process.env["REFRESH_TOKEN_SECRET"]);
-        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-        const storedToken = await getRefreshTokenByHash(hashedToken, decode.id);
-        if (storedToken.error) return res.status(401).send("token doesnt exist");
-        if (storedToken.expiresIn <= new Date()) return res.status(401).send("token expired");
-        await deleteRefreshToken(hashedToken, decode.id);
-        const refresh = generateRefreshToken(decode.id);
-        const access = generateAccessToken(decode.id);
-        res.cookie("refreshToken", refresh, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge:7 * 24 * 60 * 60 * 1000 });
-        return res.status(200).json({access, refresh});
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({error: error.message})
-    }
+    const token = req.cookies?.refreshToken;
+    if (!token) throw createError(401, "no token provided");
+
+    // invalid/expired JWTs throw and are mapped to 401 in the error middleware
+    const decoded = jwt.verify(token, process.env["REFRESH_TOKEN_SECRET"]);
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const storedToken = await getRefreshTokenByHash(hashedToken, decoded.id);
+    if (storedToken.expiresIn <= Date.now()) throw createError(401, "token expired");
+
+    // rotate: remove the old token, issue and STORE a new one
+    await deleteRefreshToken(hashedToken, decoded.id);
+    const refreshToken = generateRefreshToken(decoded.id);
+    const accessToken = generateAccessToken(decoded.id);
+    await addRefreshToken(refreshToken, decoded.id);
+
+    res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
+    return res.status(200).json({accessToken});
 })
+
 router.post('/signup', async (req, res) => {
-    try {
-        const JoiSchema = verifyJoi(signUpSchema, req.body);
-        if (JoiSchema.error) {
-            return res.status(400).json({error: JoiSchema.error});
-        }
+    const data = validate(signUpSchema, req.body);
+    const user = await signUp(data);
 
-        const user = await signUp(JoiSchema.value)
-        if (user.error) {
-            return res.status(400).json({error: user.error});
-        }
+    const accessToken = generateAccessToken(user.id)
+    const refreshToken = generateRefreshToken(user.id)
+    await addRefreshToken(refreshToken, user.id)
 
-        const accessToken = generateAccessToken(user.id)
-        const refreshToken = generateRefreshToken(user.id)
-
-        await addRefreshToken(refreshToken, user.id)
-        res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge:7 * 24 * 60 * 60 * 1000 });
-        return res.status(200).json({
-            value: user,
-            massage: 'Sign in successfully',
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-        });
-    } catch (error) {
-        return res.status(400).json({error: error.massage});
-    }
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+    return res.status(201).json({
+        value: sanitizeUser(user),
+        message: 'Signed up successfully',
+        accessToken,
+    });
 })
 
 router.post('/login', async (req, res) => {
-    try {
-        const joiSchema = verifyJoi(loginSchema, req.body);
-        if (joiSchema.error) {
-            return res.status(400).json({error: joiSchema.error});
-        }
-        const user = await login(joiSchema.value)
-        if (user.error) {
-            return res.status(400).json({error: user.error});
-        }
+    const data = validate(loginSchema, req.body);
+    const user = await login(data);
 
-        const accessToken = generateAccessToken(user.id)
-        const refreshToken = generateRefreshToken(user.id)
+    const accessToken = generateAccessToken(user.id)
+    const refreshToken = generateRefreshToken(user.id)
+    await addRefreshToken(refreshToken, user.id)
 
-        await addRefreshToken(refreshToken, user.id)
-
-        res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: true, sameSite: 'Strict', maxAge:7 * 24 * 60 * 60 * 1000 });
-        return res.status(200).json({
-            value: user,
-            massage: 'Sign in successfully',
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-        });
-    } catch (error) {
-        return res.status(400).json({error: error.massage});
-    }
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+    return res.status(200).json({
+        value: sanitizeUser(user),
+        message: 'Logged in successfully',
+        accessToken,
+    });
 })
 
 router.put('/editinfo', accessVerification, async (req, res) => {
-    try {
-        const userId = req.id;
-        const body = req.body;
-        const joiSchema = verifyJoi(changeCredentialsSchema, req.body);
-        if (joiSchema.error) {
-            return res.status(400).json({error: joiSchema.error});
-        }
-        console.log(userId);
-        const user = await getProfile(userId);
-        if (user.error) return res.status(400).json({error: user.error});
+    validate(changeCredentialsSchema, req.body);
+    const changed = await changeUserInfo(req.id, req.body.changes);
 
-        const changeUser = await changeUserInfo(userId, body.changes)
-        if (changeUser.error) return res.status(400).json({error: user.error});
-
-        return res.status(200).json({message : 'updated credentials successfully' , newInfo: changeUser });
-    }
-    catch (error) {
-        console.error(error)
-        res.status(500).json({error: error.massage});
-    }
+    return res.status(200).json({
+        message: 'updated credentials successfully',
+        newInfo: sanitizeUser(changed)
+    });
 })
+
 export default router
