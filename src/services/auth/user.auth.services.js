@@ -1,5 +1,6 @@
 import {PrismaClient} from '@prisma/client'
 import {comparePassword, hashPassword} from "../../helper/helper.js";
+import crypto from "crypto"
 
 
 const prisma = new PrismaClient();
@@ -74,6 +75,10 @@ export async function login(json) {
 
 export async function addRefreshToken(refreshToken, id) {
     try {
+        refreshToken = {
+            refreshToken : crypto.createHash('sha256').update(refreshToken).digest('hex'),
+            expiresIn: Date.now() + 7 * 24 * 60 * 60 * 1000,
+        }
         const output = await prisma.user.update({
             where: {id: id},
             data : {
@@ -103,5 +108,52 @@ export async function changeUserInfo(userId, json){
     } catch (error) {
         console.error(error)
         return {error: error.message}
+    }
+}
+
+export async function getRefreshTokenByHash(hash, id) {
+    try{
+        const user = await getProfile(id);
+        if (user.error) return {error: "user not found"};
+        const tokens = user.refreshToken;
+        const requestedToken = tokens.filter((token) => {
+            return token.refreshToken === hash;
+        })
+        if(!requestedToken) throw new Error("token doesnt exist");
+        return requestedToken;
+    } catch (error){
+        console.error(error)
+        return {error: error.message}
+    }
+}
+export async function deleteRefreshToken(hash, id) {
+    try {
+
+        const user = await getProfile(id);
+        if (user.error) return { error: "user not found" };
+
+        let tokens = user.refreshToken;
+
+        if (typeof tokens === 'string') {
+            tokens = JSON.parse(tokens);
+        }
+
+        const updatedTokens = tokens.filter((token) => token.refreshToken !== hash);
+
+        if (updatedTokens.length === tokens.length) {
+            return { error: "token doesn't exist" };
+        }
+        await prisma.user.update({
+            where: { id: id },
+            data: {
+                refreshToken: updatedTokens,
+            }
+        });
+
+        return { success: true, message: "Token deleted successfully" };
+
+    } catch (error) {
+        console.error(error);
+        return { error: error.message };
     }
 }

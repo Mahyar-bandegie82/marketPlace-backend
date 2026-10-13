@@ -24,3 +24,6 @@ export function generateAccessToken(id) {
 export function generateRefreshToken(id) {
     return jwt.sign({id: id}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: '7d'});
 }
+
+
+
