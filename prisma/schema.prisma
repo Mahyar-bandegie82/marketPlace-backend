@@ -73,6 +73,7 @@ model Address {
   userId      Int
   orders      Order[]
 
+  @@unique([userId, country, city, addressLine, postalCode])
   @@index([userId])
 }
 

@@ -5,6 +5,7 @@ export function notFound(err, req, res, next) {
 }
 
 export function handlleError (err, req, res, next) {
+    console.log("handler hit:", err.code, err.status);
     let status = err.status || err.statusCode || 500;
     let message = err.message;
 
