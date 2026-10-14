@@ -1,5 +1,5 @@
 import express from "express";
-import  userRoute from "./auth/auth.routes.js"
+import  userRoute from "./auth/auth.route.js"
 import cookieParser from "cookie-parser";
 import {handlleError, notFound} from "../../middleware/errorMiddleWare.js";
 export default function V1Loader(){

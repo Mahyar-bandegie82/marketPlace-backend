@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import createError from "http-errors";
 
 export async function hashPassword(password) {
     return await bcrypt.hash(password, 10);
@@ -9,12 +10,13 @@ export function comparePassword(password, hash) {
     return bcrypt.compare(password, hash);
 }
 
-export function verifyJoi(schema, json) {
-    const {error, value} = schema.validate(json, {abortEarly: false});
+export function validate(schema, body) {
+    const { error, value } = schema.validate(body, { abortEarly: false });
     if (error) {
-        return {error: error.details.map(err => err.message)}
+        const errorMessage = error.details.map(detail => detail.message).join(', ');
+        throw createError(400, errorMessage);
     }
-    return {value: value};
+    return value;
 }
 
 export function generateAccessToken(id) {

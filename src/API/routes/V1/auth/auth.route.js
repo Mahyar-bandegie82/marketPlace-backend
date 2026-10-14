@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import createError from "http-errors";
-import {generateAccessToken, generateRefreshToken, verifyJoi} from "../../../../helper/helper.js"
+import {generateAccessToken, generateRefreshToken, validate} from "../../../../helper/helper.js"
 import {
     signUp,
     login,
@@ -26,13 +26,6 @@ const REFRESH_COOKIE_OPTIONS = {
     sameSite: 'Strict',
     maxAge: 7 * 24 * 60 * 60 * 1000
 };
-
-// throws a 400 if the body doesn't match the schema, otherwise returns the validated value
-function validate(schema, body) {
-    const joi = verifyJoi(schema, body);
-    if (joi.error) throw createError(400, String(joi.error.message ?? joi.error));
-    return joi.value;
-}
 
 router.put('/refresh', async (req, res) => {
     const token = req.cookies?.refreshToken;
@@ -58,7 +51,6 @@ router.put('/refresh', async (req, res) => {
 router.post('/signup', async (req, res) => {
     const data = validate(signUpSchema, req.body);
     const user = await signUp(data);
-
     const accessToken = generateAccessToken(user.id)
     const refreshToken = generateRefreshToken(user.id)
     await addRefreshToken(refreshToken, user.id)
