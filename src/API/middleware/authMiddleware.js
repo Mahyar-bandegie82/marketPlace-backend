@@ -1,4 +1,6 @@
 import jwt from 'jsonwebtoken';
+import createError from "http-errors";
+import {getProfile} from "../../services/auth/user.auth.services.js";
 
 export function accessVerification(req, res, next) {
     const [scheme, token] = (req.headers.authorization || '').split(' ');
@@ -20,4 +22,10 @@ export function accessVerification(req, res, next) {
             next();
         }
     );
+}
+
+export async function isAdmin(req, res, next) {
+    const user = await getProfile(req.id);
+    if (user.role !== "ADMIN") throw createError(403, "admin access required");
+    next();
 }
