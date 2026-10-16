@@ -164,7 +164,6 @@ model OrderItems {
   listingId       Int
   listing         SellerInventory @relation(fields: [listingId], references: [id])
   order           Order           @relation(fields: [orderId], references: [id])
-  warranty        ProductWaranty?
 
   @@unique([orderId, listingId])
   @@index([listingId])
@@ -186,8 +185,6 @@ model Comment {
   @@unique([listingId, clientId])
   @@index([clientId])
 }
-
-
 
 model Promotions {
   id                 Int                @id @default(autoincrement())
