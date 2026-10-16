@@ -15,7 +15,8 @@ datasource db {
 
 enum Role {
   ADMIN
-  USER
+  CLIENT
+  SELLER
 }
 
 enum Condition {
@@ -35,23 +36,26 @@ enum OrderStatus {
 }
 
 model User {
-  id                 Int                 @id @default(autoincrement())
+  id                 Int               @id @default(autoincrement())
   userName           String
   password           String
-  phoneNumber        String              @unique
-  email              String              @unique
+  phoneNumber        String            @unique
+  email              String            @unique
   refreshToken       Json[]
-  loyalCustomer      Boolean             @default(false)
-  amountSpent        Int                 @default(0)
-  role               Role                @default(USER)
   seller             Seller?
-  Addresses          Address[]
-  shoppingCart       ShoppingCart?
-  favouriteProducts  FavouriteProducts[]
-  orders             Order[]
-  comments           Comment[]
-  commentVotes       CommentVote[]
   sellersInProcesses sellersInProcess?
+}
+
+model Client {
+  id                Int                 @id @default(autoincrement())
+  loyalCustomer     Boolean             @default(false)
+  amountSpent       Int                 @default(0)
+  Addresses         String[]            @default([])
+  postalCode        Int?
+  favouriteProducts FavouriteProducts[]
+  orders            Order[]
+  comments          Comment[]
+  shoppingCartId    ShoppingCart?
 }
 
 model Seller {
@@ -70,25 +74,10 @@ model sellersInProcess {
   storeName String
 }
 
-model Address {
-  id          Int     @id @default(autoincrement())
-  country     String
-  city        String
-  addressLine String
-  postalCode  String
-  isActive    Boolean @default(false)
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      Int
-  orders      Order[]
-
-  @@unique([userId, country, city, addressLine, postalCode])
-  @@index([userId])
-}
-
 model ShoppingCart {
   id        Int        @id @default(autoincrement())
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int        @unique
+  clientId  Int        @unique
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
   cartItems CartItem[]
 }
 
@@ -143,29 +132,26 @@ model CartItem {
 }
 
 model FavouriteProducts {
-  id        Int             @id @default(autoincrement())
-  userId    Int
-  listingId Int
   listing   SellerInventory @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client    Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId  Int
+  listingId Int
 
-  @@unique([userId, listingId])
+  @@id([clientId, listingId])
   @@index([listingId])
 }
 
 model Order {
   id          Int          @id @default(autoincrement())
   orderDate   DateTime     @default(now())
+  orderStatus OrderStatus  @default(PENDING_PAYMENT)
   paidAt      DateTime?
   deliveredAt DateTime?
-  userId      Int
-  addressId   Int
-  user        User         @relation(fields: [userId], references: [id])
-  address     Address      @relation(fields: [addressId], references: [id])
   orderItems  OrderItems[]
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    Int
 
-  @@index([userId])
-  @@index([addressId])
+  @@index([clientId])
 }
 
 model OrderItems {
@@ -173,7 +159,6 @@ model OrderItems {
   unitPrice       Int
   quantity        Int
   discountPercent Int             @default(0)
-  orderStatus     OrderStatus     @default(PENDING_PAYMENT)
   orderId         Int
   listingId       Int
   promotionId     Int?
@@ -188,32 +173,22 @@ model OrderItems {
 
 model Comment {
   id        Int             @id @default(autoincrement())
-  rating    Float
+  like      Int             @default(0)
+  dislike   Int             @default(0)
   massage   String
   createdAt DateTime        @default(now())
   images    Json            @default("[]")
   videos    Json            @default("[]")
   listingId Int
-  userId    Int
-  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   listing   SellerInventory @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  votes     CommentVote[]
+  client    Client          @relation(fields: [clientId], references: [id])
+  clientId  Int
 
-  @@unique([listingId, userId])
-  @@index([userId])
+  @@unique([listingId, clientId])
+  @@index([clientId])
 }
 
-model CommentVote {
-  commentId Int
-  userId    Int
-  value     Int
-  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([commentId, userId])
-  @@index([userId])
-}
-
+// make a field at seller in
 model ProductWaranty {
   id             Int        @id @default(autoincrement())
   warrantyName   String
