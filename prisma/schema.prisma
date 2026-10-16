@@ -13,12 +13,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  CLIENT
-  SELLER
-}
-
 enum Condition {
   NEW
   USED
@@ -154,6 +148,8 @@ model Order {
   orderItems  OrderItems[]
   client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId    Int
+  address     String
+  postalCode  Int
 
   @@index([clientId])
 }
@@ -175,6 +171,7 @@ model OrderItems {
 model Comment {
   id        Int             @id @default(autoincrement())
   like      Int             @default(0)
+  rating    Float
   dislike   Int             @default(0)
   massage   String
   createdAt DateTime        @default(now())
