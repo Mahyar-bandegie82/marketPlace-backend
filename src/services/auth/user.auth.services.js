@@ -26,14 +26,22 @@ export async function signUp(json) {
     if (existing) throw createError(409, "user already exists");
 
     const hashedPassword = await hashPassword(json.password);
-    return prisma.user.create({
-        data: {
-            userName: json.userName,
-            password: hashedPassword,
-            phoneNumber: json.phoneNumber,
-            email: json.email,
-        }
-    });
+    return await prisma.$transaction(async tx => {
+        const newUser = await tx.user.create({
+            data: {
+                userName: json.userName,
+                password: hashedPassword,
+                phoneNumber: json.phoneNumber,
+                email: json.email,
+            }
+        });
+        await tx.client.create({
+            data : {
+                userId: newUser.id,
+            }
+        })
+        return newUser;
+    })
 }
 
 export async function login(json) {

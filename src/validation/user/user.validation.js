@@ -1,9 +1,7 @@
 import Joi from "joi";
 
 export const addressVal = Joi.object({
-    country: Joi.string().required(),
-    city: Joi.string().required(),
-    addressLine: Joi.string().min(10).max(50).required(),
+    addressLine: Joi.string().min(10).max(80).required(),
     postalCode: Joi.string().required(),
 })
 
