@@ -79,6 +79,18 @@ router.post('/login', async (req, res) => {
     });
 })
 
+router.post('/logout', async (req, res) => {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) throw createError(401, "no token provided");
+    const decoded = jwt.verify(refreshToken, process.env["REFRESH_TOKEN_SECRET"]);
+    const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
+    const storedToken = await getRefreshTokenByHash(hashedToken, decoded.id);
+    if(storedToken.expires <= Date.now()) throw createError(401, "token expired");
+    await deleteRefreshToken(hashedToken, decoded.id);
+    res.clearCookie('refreshToken');
+    res.status(200).json({message: 'Logged out successfully'});
+})
+
 router.put('/editinfo', accessVerification, async (req, res) => {
     validate(changeCredentialsSchema, req.body);
     const changed = await changeUserInfo(req.id, req.body.changes);

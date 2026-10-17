@@ -9,10 +9,10 @@ import adminRoute from "./admin/admin.route.js";
 
 export default function V1Loader(){
     const app = express.Router()
-    app.use(notFound);                 // then these two, at the very end
+    app.use(notFound);
     app.use(handlleError);
     app.use('/auth',cookieParser(),  authRoute)
-    app.use('/users', handlleError, userRoute)
+    app.use('/users', userRoute)
     app.use('/seller', sellerRoute)
     app.use('/admin', adminRoute)
     return app
