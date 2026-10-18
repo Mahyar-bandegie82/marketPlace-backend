@@ -54,7 +54,7 @@ model Client {
   userId            Int                 @unique
   user              User                @relation(fields: [userId], references: [id])
   Addresses         String[]            @default([])
-  postalCode        Int?
+  postalCode        String[]            @default([])
   favouriteProducts FavouriteProducts[]
   orders            Order[]
   comments          Comment[]
