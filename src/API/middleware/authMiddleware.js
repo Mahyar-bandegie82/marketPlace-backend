@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import createError from "http-errors";
 import {getProfile} from "../../services/auth/user.auth.services.js";
+import {PrismaClient} from "@prisma/client";
 
 export function accessVerification(req, res, next) {
     const [scheme, token] = (req.headers.authorization || '').split(' ');
@@ -24,8 +25,13 @@ export function accessVerification(req, res, next) {
     );
 }
 
+const prisma = new PrismaClient()
+
 export async function isAdmin(req, res, next) {
     const user = await getProfile(req.id);
-    if (user.role !== "ADMIN") throw createError(403, "admin access required");
+    const isadmin = await prisma.admin.findUnique({
+        where: {userId : user.id}
+    })
+    if (!isadmin) {throw createError(`user is not admin`)}
     next();
 }

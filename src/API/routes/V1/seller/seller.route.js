@@ -3,7 +3,6 @@ import {validate} from "../../../../helper/helper.js";
 import {accessVerification} from "../../../middleware/authMiddleware.js";
 import createError from "http-errors";
 import {handlleError} from "../../../middleware/errorMiddleWare.js";
-import {addressVal} from "../../../../validation/user/user.validation.js";
 import {sellerSignUpSchema} from "../../../../validation/seller/seller.validation.js";
 import {sellerSignUp} from "../../../../services/seller/seller.service,js.js";
 

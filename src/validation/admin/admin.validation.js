@@ -10,3 +10,7 @@ export const adminVal = Joi.object({
     phoneNumber: Joi.string().pattern(PHONE_REGEX).required(),
     email: Joi.string().required(),
 })
+
+export const SellerParamsSchema = Joi.object({
+    userId: Joi.number().integer().positive().required(),
+});
