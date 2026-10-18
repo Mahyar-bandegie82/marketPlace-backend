@@ -14,7 +14,7 @@ const router = express.Router();
 router.use(accessVerification)
 
 router.put('/addAddres', async (req, res) => {
-    const body = validate(addressVal, req.body, )
+    const body = validate(addressVal, req.body)
     const userId = req.id
     if (!body) throw createError(400, 'address validation failed');
     const address = await registerAddress(body, userId)

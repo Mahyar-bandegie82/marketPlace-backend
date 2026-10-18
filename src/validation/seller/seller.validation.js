@@ -40,7 +40,6 @@ const newPassword = Joi.string()
 export const sellerSignUpSchema = Joi.object({
     userName: userName.required(),
     password: newPassword.required(),
-    phoneNumber: phoneNumber.required(),
     email: email.required(),
     storeName: Joi.string().required(),
 });
