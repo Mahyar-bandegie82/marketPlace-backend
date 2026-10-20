@@ -25,13 +25,13 @@ export function accessVerification(req, res, next) {
     );
 }
 
-const prisma = new PrismaClient()
+export function optionalAccessVerification(req, res, next) {
+    // no Authorization header at all -> guest, req.id stays undefined
+    if (!req.headers.authorization) {
+        return next();
+    }
 
-export async function isAdmin(req, res, next) {
-    const user = await getProfile(req.id);
-    const isadmin = await prisma.admin.findUnique({
-        where: {userId : user.id}
-    })
-    if (!isadmin) {throw createError(`user is not admin`)}
-    next();
+    // a token was sent, so it must be valid: reuse the strict check
+    return accessVerification(req, res, next);
 }
+
