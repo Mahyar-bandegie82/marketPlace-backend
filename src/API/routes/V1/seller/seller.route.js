@@ -1,8 +1,6 @@
 import express from 'express';
-import {validate} from "../../../../helper/helper.js";
 import {accessVerification} from "../../../middleware/authMiddleware.js";
 import createError from "http-errors";
-import {handleError, notFound} from "../../../middleware/errorMiddleWare.js";
 import {sellerSignUpSchema} from "../../../../validation/seller/seller.validation.js";
 import {sellerSignUp} from "../../../../services/seller/seller.service,js.js";
 import {attachAbility, authorize} from "../../../middleware/casl.authorization.js";

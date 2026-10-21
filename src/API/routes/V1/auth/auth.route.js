@@ -17,7 +17,6 @@ import {accessVerification} from "../../../middleware/authMiddleware.js";
 import {attachAbility, authorize} from "../../../middleware/casl.authorization.js";
 import {validateJoiSchema} from "../../../middleware/joiValidationMiddleware.js";
 
-dotenv.config();
 
 const router = express.Router();
 
