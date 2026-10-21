@@ -1,11 +1,9 @@
 import express from 'express';
-import {validate} from "../../../../helper/helper.js";
 import {accessVerification} from "../../../middleware/authMiddleware.js";
-import createError from "http-errors";
-import {handlleError} from "../../../middleware/errorMiddleWare.js";
 import {seeSellerRequests , verifySeller, revokeSeller} from "../../../../services/admin/admin.services.js";
 import {SellerParamsSchema} from "../../../../validation/admin/admin.validation.js";
 import {attachAbility, authorize} from "../../../middleware/casl.authorization.js";
+import {validateJoiSchema} from "../../../middleware/joiValidationMiddleware.js";
 
 const router = express.Router();
 router.use(accessVerification, attachAbility)
@@ -15,15 +13,14 @@ router.get('/sellerReq', authorize('read', 'Seller'), async (req, res) => {
     return res.status(200).json(sellers);
 })
 
-router.patch('/verifySellers/:userId', async (req, res) => {
-    const { userId } = validate(SellerParamsSchema, req.params);
-    const seller = await verifySeller(userId);
+router.patch('/verifySellers/:userId', authorize('verify', 'Seller'), validateJoiSchema(SellerParamsSchema, 'params'), async (req, res) => {
+    const seller = await verifySeller(req.params.userId);
     return res.status(200).json({ message: 'seller verified successfully', seller });
 });
 
-router.delete('/deleteSellers/:userId', async (req, res) => {
-    const { userId } = validate(SellerParamsSchema, req.params);
-    await revokeSeller(userId);
+router.delete('/deleteSellers/:userId', authorize('delete', 'Seller'), validateJoiSchema(SellerParamsSchema, 'params'), async (req, res) => {
+    await revokeSeller(req.params.userId);
     return res.status(200).json({ message: 'seller revoked successfully' });
 });
+
 export default router;

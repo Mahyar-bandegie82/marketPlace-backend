@@ -1,9 +1,8 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import dotenv from "dotenv";
 import createError from "http-errors";
-import {generateAccessToken, generateRefreshToken, validate} from "../../../../helper/helper.js"
+import {generateAccessToken, generateRefreshToken} from "../../../../helper/helper.js"
 import {
     signUp,
     login,
@@ -15,6 +14,8 @@ import {
 } from "../../../../services/auth/user.auth.services.js";
 import {signUpSchema, loginSchema, changeCredentialsSchema} from "../../../../validation/auth/users.auth.js"
 import {accessVerification} from "../../../middleware/authMiddleware.js";
+import {attachAbility, authorize} from "../../../middleware/casl.authorization.js";
+import {validateJoiSchema} from "../../../middleware/joiValidationMiddleware.js";
 
 dotenv.config();
 
@@ -48,9 +49,8 @@ router.put('/refresh', async (req, res) => {
     return res.status(200).json({accessToken});
 })
 
-router.post('/signup', async (req, res) => {
-    const data = validate(signUpSchema, req.body);
-    const user = await signUp(data);
+router.post('/signup',validateJoiSchema(signUpSchema), async (req, res) => {
+    const user = await signUp(req.body);
     const accessToken = generateAccessToken(user.id)
     const refreshToken = generateRefreshToken(user.id)
     await addRefreshToken(refreshToken, user.id)
@@ -63,9 +63,8 @@ router.post('/signup', async (req, res) => {
     });
 })
 
-router.post('/login', async (req, res) => {
-    const data = validate(loginSchema, req.body);
-    const user = await login(data);
+router.post('/login', validateJoiSchema(loginSchema), async (req, res) => {
+    const user = await login(req.body);
 
     const accessToken = generateAccessToken(user.id)
     const refreshToken = generateRefreshToken(user.id)
@@ -90,9 +89,8 @@ router.post('/logout', async (req, res) => {
     res.clearCookie('refreshToken');
     res.status(200).json({message: 'Logged out successfully'});
 })
-
-router.put('/editinfo', accessVerification, async (req, res) => {
-    validate(changeCredentialsSchema, req.body);
+router.use(accessVerification, attachAbility)
+router.put('/editinfo',authorize('update', 'User'), validateJoiSchema(changeCredentialsSchema) , async (req, res) => {
     const changed = await changeUserInfo(req.id, req.body.changes);
 
     return res.status(200).json({

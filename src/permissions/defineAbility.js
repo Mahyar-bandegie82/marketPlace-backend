@@ -42,6 +42,8 @@ export function defineAbilityFor(user) {
         can('delete', 'Comment', { clientId: client.id });
         can('react', 'Comment');   // like / dislike someone's comment
 
+        can('create', 'Seller')
+
         can(['create', 'read'], 'Order', { clientId: client.id });
         can('cancel', 'Order', {
             clientId: client.id,
@@ -68,7 +70,7 @@ export function defineAbilityFor(user) {
 
     // ───────────── Admin profile ─────────────
     if (admin) {
-        can(['read', 'verify', 'trust'], 'Seller');
+        can(['read', 'verify', 'trust', 'delete'], 'Seller');
         can('read', 'SellerInventory');                       // all, including inactive
         can('update', 'SellerInventory', ['isActive']);       // take a listing down
         can('manage', ['Product', 'ProductCategory', 'Promotions', 'PromotionListing']);

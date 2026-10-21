@@ -22,7 +22,7 @@ export async function attachAbility(req, res, next) {
         },
     });
     console.log(user);
-    if (!user) throw createError(401, 'User not found');
+    if (!user) next(createError(401, 'User not found')) ;
 
     req.user = user;
     req.ability = defineAbilityFor(user);

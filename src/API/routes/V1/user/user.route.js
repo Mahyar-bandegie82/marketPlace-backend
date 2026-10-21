@@ -9,15 +9,17 @@ import {
     readUserAddress,
     registerAddress
 } from "../../../../services/user/user.services.js";
+import {attachAbility} from "../../../middleware/casl.authorization.js";
+import {validateJoiSchema} from "../../../middleware/joiValidationMiddleware.js";
+
 
 const router = express.Router();
 router.use(accessVerification)
+router.use(attachAbility)
 
-router.put('/addAddres', async (req, res) => {
-    const body = validate(addressVal, req.body)
+router.put('/addAddres', validateJoiSchema(addressVal), async (req, res) => {
     const userId = req.id
-    if (!body) throw createError(400, 'address validation failed');
-    const address = await registerAddress(body, userId)
+    const address = await registerAddress(req.body, userId)
     res.status(201).json({message:"success", address})
 })
 
@@ -27,17 +29,16 @@ router.get("/readAddress", async (req, res) => {
     res.status(200).json({message:"success", address})
 })
 
-router.delete("/deleteAddress", async (req, res) => {
-    const body = validate(deleteAddressval, req.body)
+router.delete("/deleteAddress", validateJoiSchema(deleteAddressval), async (req, res) => {
     const userId = req.id;
-    const updatedAddress = await deleteUserAddress(body, userId);
+    const updatedAddress = await deleteUserAddress(req.body, userId);
     res.status(200).json({message : "deleted address", updatedAddress})
 })
 
-router.put("/editAddress", async (req, res) => {
-    const body = validate(editAddressVal, req.body)
+router.put("/editAddress", validateJoiSchema(editAddressVal), async (req, res) => {
     const userId = req.id;
-    const updatedAddreses = await editAddress(body, userId);
+    const updatedAddreses = await editAddress(req.body, userId);
     res.status(200).json({message : "edited address successfully" , updatedAddreses})
 })
+
 export default router;
