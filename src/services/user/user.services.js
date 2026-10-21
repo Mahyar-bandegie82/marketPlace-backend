@@ -65,6 +65,8 @@ export async function deleteUserAddress(addressBody, userId) {
         address,
         postalCode: client.postalCode[i],
     }));
+    const existingAddress = allAddress.find(address => address.address === addressBody.addressLine || address.postalCode === addressBody.postalCode);
+    if (!existingAddress) throw createError(403, "address doesnt exist");
     const output = allAddress.filter(address => address.postalCode !== addressBody.postalCode || address.address !== addressBody.addressLine);
     const addressesLine = [];
     const postalCode = [];

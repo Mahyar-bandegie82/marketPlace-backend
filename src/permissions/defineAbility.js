@@ -31,6 +31,9 @@ export function defineAbilityFor(user) {
         can('read', 'Client', { id: client.id });
         // Addresses/postalCode only. NOT loyalCustomer / amountSpent
         can('update', 'Client', ['Addresses', 'postalCode'], { id: client.id });
+        can('delete', 'Client', ['Addresses', 'postalCode'], { id: client.id });
+        can('create', 'Client', ['Addresses', 'postalCode'], { id: client.id });
+        can('read', 'Client', ['Addresses', 'postalCode'], { id: client.id });
 
         cannot('manage', 'ShoppingCart', { clientId: client.id });
         can('manage', 'CartItem', { shoppingCart: { clientId: client.id } });

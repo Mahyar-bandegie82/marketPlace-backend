@@ -1,6 +1,6 @@
 // middleware/errorHandler.js
 import createError from "http-errors";
-
+import { ForbiddenError } from '@casl/ability';
 // 404 for unmatched routes
 export function notFound(req, res, next) {
     next(createError(404, "route not found"));
@@ -19,7 +19,7 @@ export function handleError(err, req, res, next) {
     } else if (err.code === "P2025") {
         status = 404;
         message = "record not found";
-    } else if (err.name === "ForbiddenError") {
+    } else if (err instanceof ForbiddenError) {
         status = 403;
         message = "you are not allowed to do this";
     }
