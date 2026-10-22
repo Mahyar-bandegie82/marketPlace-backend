@@ -1,6 +1,6 @@
 import {PrismaClient} from "@prisma/client"
 import createError from "http-errors";
-import {getProfile} from "../auth/user.auth.services.js";
+import {getProfile} from "../auth/user.auth.service.js";
 const prisma = new PrismaClient()
 
 export async function seeSellerRequests() {

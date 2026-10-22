@@ -1,7 +1,7 @@
 
 import {PrismaClient} from "@prisma/client";
 import createError from "http-errors";
-import {getProfile} from "../auth/user.auth.services.js";
+import {getProfile} from "../auth/user.auth.service.js";
 import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
