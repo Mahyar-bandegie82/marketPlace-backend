@@ -2,8 +2,9 @@ import {PrismaClient} from '@prisma/client'
 import createError from "http-errors";
 import crypto from "crypto"
 import {comparePassword, hashPassword} from "../../helper/helper.js";
+import {prismaPool} from "../../helper/helper.js";
 
-const prisma = new PrismaClient();
+const prisma = prismaPool
 
 const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -100,4 +101,12 @@ export async function deleteRefreshToken(hash, id) {
         where: {id},
         data: {refreshToken: updatedTokens}
     });
+}
+
+export async function deleteAllRefreshTokens(kash, id) {
+    const user = await getProfile(id);
+    await prisma.user.delete({
+        where: {id},
+        data : {refreshToken: []}
+    })
 }

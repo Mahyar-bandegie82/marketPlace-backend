@@ -2,7 +2,7 @@ import createError from "http-errors";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import {
-    addRefreshToken, changeUserInfo,
+    addRefreshToken, changeUserInfo, deleteAllRefreshTokens,
     deleteRefreshToken,
     getRefreshTokenByHash, login, sanitizeUser,
     signUp
@@ -26,7 +26,13 @@ export async function refreshRouteHandler(req, res) {
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
     const storedToken = await getRefreshTokenByHash(hashedToken, decoded.id);
-    if (storedToken.expiresIn <= Date.now()) throw createError(401, "token expired");
+    if (storedToken.expiresIn <= Date.now()) {
+        await deleteRefreshToken(hashedToken, decoded.id);
+        throw createError(401, "token expired");
+    }
+    if(!storedToken) {
+        await deleteAllRefreshTokens(hashedToken, decoded.id);
+    }
 
     // rotate: remove the old token, issue and STORE a new one
     await deleteRefreshToken(hashedToken, decoded.id);
@@ -74,7 +80,7 @@ export async function logoutRouteHandler(req, res) {
     const hashedToken = crypto.createHash("sha256").update(refreshToken).digest("hex");
     const storedToken = await getRefreshTokenByHash(hashedToken, decoded.id);
     if(storedToken.expires <= Date.now()) throw createError(401, "token expired");
-    await deleteRefreshToken(hashedToken, decoded.id);
+    await deleteAllRefreshTokens(hashedToken, decoded.id);
     res.clearCookie('refreshToken');
     res.status(200).json({message: 'Logged out successfully'});
 }

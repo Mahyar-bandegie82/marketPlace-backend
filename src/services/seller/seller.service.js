@@ -1,10 +1,10 @@
-
-import {PrismaClient} from "@prisma/client";
 import createError from "http-errors";
 import {getProfile} from "../auth/user.auth.service.js";
 import bcrypt from "bcrypt";
 
-const prisma = new PrismaClient();
+import {prismaPool} from "../../helper/helper.js";
+
+const prisma = prismaPool
 
 // if seller doesn't have account they will be forced to log in or create an account
 export async function sellerSignUp(userId, body) {

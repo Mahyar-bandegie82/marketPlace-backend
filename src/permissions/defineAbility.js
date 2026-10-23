@@ -73,7 +73,7 @@ export function defineAbilityFor(user) {
 
     // ───────────── Admin profile ─────────────
     if (admin) {
-        can(['read', 'verify', 'trust', 'delete'], 'Seller');
+        can(['read', 'verify', 'trust', 'delete, unverify'], 'Seller');
         can('read', 'SellerInventory');                       // all, including inactive
         can('update', 'SellerInventory', ['isActive']);       // take a listing down
         can('manage', ['Product', 'ProductCategory', 'Promotions', 'PromotionListing']);

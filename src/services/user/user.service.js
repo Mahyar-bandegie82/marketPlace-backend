@@ -1,7 +1,7 @@
-import {PrismaClient} from "@prisma/client"
 import createError from "http-errors";
+import {prismaPool} from "../../helper/helper.js";
 
-const prisma = new PrismaClient()
+const prisma = prismaPool
 
 export async function registerAddress(address, userId) {
     const client = await prisma.client.findUnique({where: {userId}});

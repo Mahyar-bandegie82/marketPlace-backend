@@ -3,7 +3,7 @@ import {
     editAddress,
     readUserAddress,
     registerAddress
-} from "../../../../services/user/user.service.js";
+} from "../../services/user/user.service.js";
 
 export async function addAddressRouteHandler(req, res) {
     const userId = req.id

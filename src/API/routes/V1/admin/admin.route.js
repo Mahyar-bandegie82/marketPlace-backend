@@ -5,7 +5,7 @@ import {attachAbility, authorize} from "../../../middleware/casl.authorization.j
 import {validateJoiSchema} from "../../../middleware/joiValidationMiddleware.js";
 import {
     deleteSellerRouteHandler,
-    readSellerRequestRouteHandler,
+    readSellerRequestRouteHandler, unverifySellerRouteHandler,
     verifySellerRouteHandler
 } from "../../../../controllers/admin/admin.controller.js";
 
@@ -15,5 +15,6 @@ router.use(accessVerification, attachAbility)
 router.get('/sellerReq', authorize('read', 'Seller'), readSellerRequestRouteHandler)
 router.patch('/verifySellers/:userId', authorize('verify', 'Seller'), validateJoiSchema(SellerParamsSchema, 'params'), verifySellerRouteHandler);
 router.delete('/deleteSellers/:userId', authorize('delete', 'Seller'), validateJoiSchema(SellerParamsSchema, 'params'), deleteSellerRouteHandler);
+router.put('/unverifySeller/:userId', authorize('unverify', 'Seller'),validateJoiSchema(SellerParamsSchema, 'params'), unverifySellerRouteHandler);
 
 export default router;

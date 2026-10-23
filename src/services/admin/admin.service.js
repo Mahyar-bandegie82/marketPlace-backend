@@ -1,13 +1,20 @@
-import {PrismaClient} from "@prisma/client"
+
 import createError from "http-errors";
-import {getProfile} from "../auth/user.auth.service.js";
-const prisma = new PrismaClient()
+import {prismaPool} from "../../helper/helper.js";
+
+const prisma = prismaPool
 
 export async function seeSellerRequests() {
-    const sellers = await prisma.seller.findMany({
-        where: {verified: false}
+    let sellers = await prisma.seller.findMany({
+        where: {verified: false},
+        select: {
+            user : { select: { id: true , username : true , email : true , phoneNumber : true }, },
+            storeName : true,
+            verified: true,
+            id: true
+        }
     })
-    if (sellers.length === 0) {throw createError(400, 'there are no unverified sellers')}
+    if (sellers.length === 0) {sellers = "there are no unverified sellers"}
     return sellers
 }
 
@@ -27,6 +34,16 @@ export async function revokeSeller(userId) {
     if (!seller) throw createError(404, 'seller not found');
 
     await prisma.seller.delete({ where: { userId } });
+}
+
+export async function unverifySeller(userId) {
+    const seller = await prisma.seller.findUnique({ where: { userId } });
+    if (!seller) throw createError(404, 'seller not found');
+
+    return await prisma.seller.update({
+        where: { userId },
+        data: { verified: false },
+    })
 }
 // async function makeAdmin(userId) {
 //     const user = await prisma.admin.create({
