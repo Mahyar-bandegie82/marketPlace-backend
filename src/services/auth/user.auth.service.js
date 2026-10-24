@@ -84,7 +84,7 @@ export async function changeUserInfo(userId, json) {
 export async function getRefreshTokenByHash(hash, id) {
     const user = await getProfile(id);
     const found = (user.refreshToken ?? []).find((token) => token.refreshToken === hash);
-    if (!found) throw createError(401, "token doesn't exist");
+    // if (!found) throw createError(401, "token doesn't exist");
     return found;
 }
 
@@ -105,8 +105,8 @@ export async function deleteRefreshToken(hash, id) {
 
 export async function deleteAllRefreshTokens(kash, id) {
     const user = await getProfile(id);
-    await prisma.user.delete({
-        where: {id},
-        data : {refreshToken: []}
+    await prisma.user.update({
+        where: {id : user.id},
+        data: {refreshToken: []}
     })
 }

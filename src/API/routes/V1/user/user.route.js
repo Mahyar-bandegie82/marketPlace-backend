@@ -15,7 +15,7 @@ router.use(accessVerification)
 router.use(attachAbility)
 
 router.put('/addAddres', validateJoiSchema(addressVal), authorize('create', 'Client'), addAddressRouteHandler)
-router.get("/readAddress", authorize('read', 'client'), readAddressRouteHandler)
+router.get("/readAddress", authorize('read', 'Client'), readAddressRouteHandler)
 router.delete("/deleteAddress", validateJoiSchema(deleteAddressval), authorize('delete', 'Client'), deleteAddressRouteHandler)
 router.put("/editAddress", validateJoiSchema(editAddressVal) , authorize('update', 'Client'), editAddressRouteHandler)
 

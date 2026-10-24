@@ -1,6 +1,6 @@
 // middlewares/auth/ability.middleware.js
 import createError from 'http-errors';
-import {prisma} from '../../helper/helper.js';
+import {prismaPool} from '../../helper/helper.js';
 import { defineAbilityFor } from '../../permissions/defineAbility.js';
 import { ForbiddenError } from '@casl/ability';
 
@@ -12,7 +12,7 @@ export async function attachAbility(req, res, next) {
         return next();
     }
 
-    const user = await prisma.user.findUnique({
+    const user = await prismaPool.user.findUnique({
         where: { id: req.id },
         select: {
             id: true,

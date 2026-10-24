@@ -26,12 +26,13 @@ export async function refreshRouteHandler(req, res) {
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
     const storedToken = await getRefreshTokenByHash(hashedToken, decoded.id);
+    if(!storedToken) {
+        res.status(400).json({message : 'suspicious'})
+        await deleteAllRefreshTokens(hashedToken, decoded.id);
+    }
     if (storedToken.expiresIn <= Date.now()) {
         await deleteRefreshToken(hashedToken, decoded.id);
         throw createError(401, "token expired");
-    }
-    if(!storedToken) {
-        await deleteAllRefreshTokens(hashedToken, decoded.id);
     }
 
     // rotate: remove the old token, issue and STORE a new one
