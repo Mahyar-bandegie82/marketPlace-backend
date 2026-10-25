@@ -14,11 +14,11 @@ export function comparePassword(password, hash) {
 }
 
 export function generateAccessToken(id) {
-    return jwt.sign({id: id}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '30m'});
+    return jwt.sign({id: id}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '30m'} );
 }
 
-export function generateRefreshToken(id) {
-    return jwt.sign({id: id}, process.env.REFRESH_TOKEN_SECRET, {expiresIn: '7w'});
+export function generateRefreshToken(id, familyId) {
+    return jwt.sign({id , familyId}, process.env.REFRESH_TOKEN_SECRET, {algorithm : "HS256", expiresIn: '7d', jwtid : crypto.randomUUID()});
 }
 
 

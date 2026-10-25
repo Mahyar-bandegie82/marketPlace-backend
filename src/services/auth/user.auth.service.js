@@ -60,17 +60,6 @@ export async function login(json) {
     return user;
 }
 
-export async function addRefreshToken(refreshToken, id) {
-    const entry = {
-        refreshToken: crypto.createHash('sha256').update(refreshToken).digest('hex'),
-        expiresIn: Date.now() + REFRESH_TTL_MS,
-    };
-    await prisma.user.update({
-        where: {id},
-        data: {refreshToken: {push: entry}}
-    });
-}
-
 export async function changeUserInfo(userId, json) {
     const data = {};
     if (json.userName) data.userName = json.userName;
@@ -81,32 +70,3 @@ export async function changeUserInfo(userId, json) {
     return prisma.user.update({where: {id: userId}, data});
 }
 
-export async function getRefreshTokenByHash(hash, id) {
-    const user = await getProfile(id);
-    const found = (user.refreshToken ?? []).find((token) => token.refreshToken === hash);
-    // if (!found) throw createError(401, "token doesn't exist");
-    return found;
-}
-
-export async function deleteRefreshToken(hash, id) {
-    const user = await getProfile(id);
-    const tokens = user.refreshToken ?? [];
-    const updatedTokens = tokens.filter((token) => token.refreshToken !== hash);
-
-    if (updatedTokens.length === tokens.length) {
-        throw createError(401, "token doesn't exist");
-    }
-
-    await prisma.user.update({
-        where: {id},
-        data: {refreshToken: updatedTokens}
-    });
-}
-
-export async function deleteAllRefreshTokens(kash, id) {
-    const user = await getProfile(id);
-    await prisma.user.update({
-        where: {id : user.id},
-        data: {refreshToken: []}
-    })
-}
