@@ -11,7 +11,7 @@ import {
     saveRefreshToken
 } from "../../services/redis/refreshToken.service.js";
 
-await connectRedis()
+await connectRedis();
 const REFRESH_COOKIE_OPTIONS = {
     httpOnly: true,
     secure: true,

@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import createError from "http-errors";
 import {PrismaClient} from "@prisma/client";
+import crypto from "crypto";
 
 export const prismaPool = new PrismaClient()
 
@@ -21,5 +22,8 @@ export function generateRefreshToken(id, familyId) {
     return jwt.sign({id , familyId}, process.env.REFRESH_TOKEN_SECRET, {algorithm : "HS256", expiresIn: '7d', jwtid : crypto.randomUUID()});
 }
 
-
+export function generateOtp(){
+    const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+    return code;
+}
 
