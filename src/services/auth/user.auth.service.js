@@ -36,10 +36,13 @@ export async function signUp(json) {
                 email: json.email,
             }
         });
-        await tx.client.create({
-            data : {
+        const client = await tx.client.create({
+            data: {
                 userId: newUser.id,
             }
+        })
+        await tx.shoppingCart.create({
+            data : {clientId: client.id},
         })
         return newUser;
     })
