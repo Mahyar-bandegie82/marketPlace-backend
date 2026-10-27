@@ -45,6 +45,19 @@ export async function unverifySeller(userId) {
         data: { verified: false },
     })
 }
+
+export async function addcategory(body) {
+    const exist = await prisma.productCategory.findUnique({
+        where: {categoryName : body.categoryName}
+    })
+    if (exist) {
+        throw createError(400, 'categoryName already exists');
+    }
+    return await prisma.productCategory.create({
+        data: { categoryName : body.categoryName },
+    })
+}
+
 // async function makeAdmin(userId) {
 //     const user = await prisma.admin.create({
 //         data: {userId : userId}

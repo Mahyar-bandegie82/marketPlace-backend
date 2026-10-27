@@ -14,3 +14,7 @@ export const adminVal = Joi.object({
 export const SellerParamsSchema = Joi.object({
     userId: Joi.number().integer().positive().required(),
 });
+
+export const addProductCategory = Joi.object({
+    categoryName: Joi.string().trim().required(),
+})

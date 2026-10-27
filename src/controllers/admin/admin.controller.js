@@ -1,4 +1,10 @@
-import {seeSellerRequests, verifySeller, revokeSeller, unverifySeller} from "../../services/admin/admin.service.js";
+import {
+    seeSellerRequests,
+    verifySeller,
+    revokeSeller,
+    unverifySeller,
+    addcategory
+} from "../../services/admin/admin.service.js";
 
 export async function readSellerRequestRouteHandler(req, res){
     const sellers = await seeSellerRequests();
@@ -18,4 +24,9 @@ export async function deleteSellerRouteHandler(req, res){
 export async function unverifySellerRouteHandler(req, res){
     const seller = await unverifySeller(req.params.userId);
     return res.status(200).json({ message: 'seller unverified successfully' });
+}
+
+export async function addToProductCategoryRouteHandler(req, res){
+    const productCategory = await addcategory(req.body);
+    return res.status(200).json({message: 'ProductCategory added successfully ', productCategory} );
 }

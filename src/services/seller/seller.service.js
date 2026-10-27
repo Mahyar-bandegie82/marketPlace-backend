@@ -24,3 +24,38 @@ export async function sellerSignUp(userId, body) {
         }
     })
 }
+
+export async function addToInventory(sellerId, body) {
+    const { productId, product, quantity, price, condition, productWaranty } = body;
+
+    return prisma.$transaction(async tx => {
+        let id = productId;
+        console.log(sellerId, body);
+        if (id === undefined) {
+            const created = await tx.product.create({
+                data: {
+                    productName: product.productName,
+                    description: product.description,
+                    attributes: product.attributes,
+                    images: product.images,
+                    videos: product.videos,
+                    categories: {
+                        connect: product.categories.map(categoryName => ({ categoryName })),
+                    },
+                },
+            });
+            id = created.id;
+        } else {
+            const existing = await tx.product.findUnique({
+                where: { id },
+                select: { id: true },
+            });
+            if (!existing) throw createError(404, "product not found");
+        }
+
+        return tx.sellerInventory.create({
+            data: { sellerId, productId: id, quantity, price, condition, productWaranty },
+            include: { product: true },
+        });
+    });
+}

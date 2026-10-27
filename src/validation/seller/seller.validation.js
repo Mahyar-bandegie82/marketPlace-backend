@@ -43,3 +43,22 @@ export const sellerSignUpSchema = Joi.object({
     email: email.required(),
     storeName: Joi.string().required(),
 });
+
+const productSchema = Joi.object({
+    productName: Joi.string().trim().min(2).required(),
+    description: Joi.string().trim().required(),
+    categories: Joi.array().items(Joi.string()).min(1).required(),
+    attributes: Joi.object().default({}),
+    images: Joi.array().items(Joi.string().uri()).default([]),
+    videos: Joi.array().items(Joi.string().uri()).default([]),
+});
+
+export const addInventorySchema = Joi.object({
+    productId: Joi.number().integer().positive(),
+    product: productSchema,
+    quantity: Joi.number().integer().min(0).required(),
+    price: Joi.number().integer().positive().required(),
+    condition: Joi.string().valid('NEW', 'USED', 'BARELY_USED'),
+    productWaranty: Joi.object(),
+}).xor('productId', 'product');
+
