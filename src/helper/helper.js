@@ -22,8 +22,3 @@ export function generateRefreshToken(id, familyId) {
     return jwt.sign({id , familyId}, process.env.REFRESH_TOKEN_SECRET, {algorithm : "HS256", expiresIn: '7d', jwtid : crypto.randomUUID()});
 }
 
-export function generateOtp(){
-    const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
-    return code;
-}
-
