@@ -60,13 +60,13 @@ export function defineAbilityFor(user) {
         can('read', 'Seller', { id: seller.id });
         can('update', 'Seller', ['storeName'], { id: seller.id });
 
-        can('read', 'SellerInventory', { sellerId: seller.id });
         if (seller.verified) {
             can('create', 'SellerInventory', { sellerId: seller.id });
+            can('delete', 'SellerInventory', { sellerId: seller.id });
+            can('read', 'SellerInventory', { sellerId: seller.id });
+            can('update', 'SellerInventory', ['quantity', 'price', 'condition', 'isActive', 'productWaranty'], { sellerId: seller.id });
         }
-        can('update', 'SellerInventory',
-            ['quantity', 'price', 'condition', 'isActive', 'productWaranty'],
-            { sellerId: seller.id });
+
 
         cannot('create', 'OrderItems', { listing: { sellerId: seller.id } });
     }

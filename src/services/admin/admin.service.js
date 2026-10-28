@@ -8,7 +8,7 @@ export async function seeSellerRequests() {
     let sellers = await prisma.seller.findMany({
         where: {verified: false},
         select: {
-            user : { select: { id: true , username : true , email : true , phoneNumber : true }, },
+            user : { select: { id: true , userName : true , email : true , phoneNumber : true }, },
             storeName : true,
             verified: true,
             id: true

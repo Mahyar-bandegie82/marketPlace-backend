@@ -30,15 +30,14 @@ enum OrderStatus {
 }
 
 model User {
-  id           Int     @id @default(autoincrement())
-  userName     String
-  password     String
-  phoneNumber  String  @unique
-  email        String  @unique
-  refreshToken Json[]
-  seller       Seller?
-  client       Client?
-  admin        Admin?
+  id          Int     @id @default(autoincrement())
+  userName    String
+  password    String
+  phoneNumber String  @unique
+  email       String  @unique
+  seller      Seller?
+  client      Client?
+  admin       Admin?
 }
 
 model Admin {

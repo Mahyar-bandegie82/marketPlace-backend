@@ -1,5 +1,5 @@
 import createError from "http-errors";
-import {sellerSignUp, addToInventory} from "../../services/seller/seller.service.js";
+import {sellerSignUp, addToInventory, deleteListing} from "../../services/seller/seller.service.js";
 
 
 export async function signUpForSellers(req, res) {

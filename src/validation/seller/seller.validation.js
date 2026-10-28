@@ -62,3 +62,6 @@ export const addInventorySchema = Joi.object({
     productWaranty: Joi.object(),
 }).xor('productId', 'product');
 
+export const deleteListingSchema = Joi.object({
+    id: Joi.number().integer().positive(),
+})
