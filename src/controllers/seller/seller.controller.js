@@ -19,3 +19,16 @@ export async function addInventoryRouteHandler(req, res) {
         message: 'Product added to inventory',
     });
 }
+
+export async function deleteListingRouteHandler(req, res) {
+    const sellerId = req.user.seller?.id;
+    if (!sellerId) throw createError(403, "only sellers can remove listings");
+
+    const listingId = Number(req.params.id);
+    if (!Number.isInteger(listingId) || listingId <= 0) {
+        throw createError(400, "invalid listing id");
+    }
+
+    await deleteListing(listingId, sellerId);
+    return res.status(200).json({ message: 'Listing removed' });
+}

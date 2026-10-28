@@ -1,5 +1,9 @@
 import express from "express";
-import {addInventoryRouteHandler, signUpForSellers} from "../../../../controllers/seller/seller.controller.js";
+import {
+    addInventoryRouteHandler,
+    deleteListingRouteHandler,
+    signUpForSellers
+} from "../../../../controllers/seller/seller.controller.js";
 import {validateJoiSchema} from "../../../middleware/joiValidationMiddleware.js";
 import {accessVerification} from "../../../middleware/authMiddleware.js";
 import {attachAbility} from "../../../middleware/casl.authorization.js"
@@ -14,5 +18,6 @@ router.use(attachAbility)
 
 router.post('/sellerSignUp',authorize('create', 'Seller'), validateJoiSchema(sellerSignUpSchema), signUpForSellers)
 router.post('/addListing',authorize('create', 'SellerInventory'), validateJoiSchema(addInventorySchema), addInventoryRouteHandler)
-router.delete('/deleteListing', authorize('manage', 'SellerInventory'),)
+router.delete('/deleteListing', authorize('manage', 'SellerInventory'), deleteListingRouteHandler)
+
 export default router;

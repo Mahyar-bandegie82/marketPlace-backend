@@ -59,3 +59,10 @@ export async function addToInventory(sellerId, body) {
         });
     });
 }
+export async function deleteListing(listingId, sellerId){
+    const resault = await prisma.sellerInventory.updateMany({
+        where : {id : listingId, sellerId : sellerId, isActive : true},
+        data : {isActive : false}
+    })
+    if (resault.count === 0) throw createError(404, "listing not found");
+}
