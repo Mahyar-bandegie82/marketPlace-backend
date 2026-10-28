@@ -39,6 +39,7 @@ export function defineAbilityFor(user) {
         can('manage', 'CartItem', { shoppingCart: { clientId: client.id } });
         can('create', 'FavouriteProducts', { clientId: client.id });
         can('delete', 'FavouriteProducts', { clientId: client.id });
+        can('read', 'FavouriteProducts', { clientId: client.id });
 
         can('create', 'Comment', { clientId: client.id });
         can('update', 'Comment', ['massage', 'images', 'videos'], { clientId: client.id });

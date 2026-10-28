@@ -91,7 +91,7 @@ export async function editAddress(body, userId) {
     });
     if (!client) throw createError(404, "client profile not found");
     const index = client.Addresses.findIndex((addressLine, i) =>
-            addressLine === address.addressLine && client.postalCode[i] === address.postalCode
+        addressLine === address.addressLine && client.postalCode[i] === address.postalCode
     );
     if (index === -1) throw createError(404, "address not found");
 
@@ -113,9 +113,55 @@ export async function editAddress(body, userId) {
     return await prisma.client.update({
         where: {userId},
         data: {
-            Addresses : Addresses,
-            postalCode : postalCode
+            Addresses: Addresses,
+            postalCode: postalCode
         },
-        select: {Addresses : true, postalCode: true},
+        select: {Addresses: true, postalCode: true},
     })
+}
+
+export async function addFavourite(clientId, productId) {
+    const product = await prisma.product.findUnique({
+        where: {id: productId},
+        select: {id: true},
+    });
+    if (!product) throw createError(404, "product not found");
+
+    const exists = await prisma.favouriteProducts.findUnique({
+        where : {clientId_productId : {clientId, productId}},
+    })
+
+    if(exists) throw createError(401, 'already exists')
+    await prisma.favouriteProducts.create({data: {clientId, productId}});
+}
+
+export async function removeFavourite(clientId, productId) {
+    const exists = await prisma.favouriteProducts.findUnique({
+        where: { clientId_productId: { clientId, productId } },
+        select: { productId: true },
+    });
+    if (!exists) throw createError(404, "product is not in your favourites");
+
+    await prisma.favouriteProducts.delete({
+        where: { clientId_productId: { clientId, productId } },
+    });
+}
+
+export async function clearFavourites(clientId) {
+    const {count} = await prisma.favouriteProducts.deleteMany({
+        where: {clientId},
+    });
+    return count;
+}
+
+export async function getFavourites(clientId) {
+    return await prisma.favouriteProducts.findMany({
+        where: { clientId },
+        select: {
+            product: {
+                select: { id: true, productName: true, rating: true, images: true },
+            },
+        },
+        orderBy: { productId: 'desc' },
+    });
 }

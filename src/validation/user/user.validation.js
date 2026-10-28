@@ -19,3 +19,6 @@ export const editAddressVal = Joi.object({
 });
 
 
+export const ProductIdSchema = Joi.object({
+    productId: Joi.number().integer().positive().required(),
+});
