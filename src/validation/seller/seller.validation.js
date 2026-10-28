@@ -62,6 +62,12 @@ export const addInventorySchema = Joi.object({
     productWaranty: Joi.object(),
 }).xor('productId', 'product');
 
-export const deleteListingSchema = Joi.object({
-    id: Joi.number().integer().positive(),
+export const ListingIdSchema = Joi.object({
+    listingId: Joi.number().integer().positive().required()
 })
+
+export const updateListingSchema = Joi.object({
+    quantity: Joi.number().integer().min(0),
+    price: Joi.number().positive(),
+    condition: Joi.string().valid('NEW', 'USED'),  // use your enum values
+}).min(1);

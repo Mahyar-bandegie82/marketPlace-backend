@@ -1,5 +1,11 @@
 import createError from "http-errors";
-import {sellerSignUp, addToInventory, deleteListing} from "../../services/seller/seller.service.js";
+import {
+    sellerSignUp,
+    addToInventory,
+    deleteListing,
+    updateListing,
+    getAllListing, getListing
+} from "../../services/seller/seller.service.js";
 
 
 export async function signUpForSellers(req, res) {
@@ -24,11 +30,41 @@ export async function deleteListingRouteHandler(req, res) {
     const sellerId = req.user.seller?.id;
     if (!sellerId) throw createError(403, "only sellers can remove listings");
 
-    const listingId = Number(req.params.id);
+    const listingId = Number(req.params.listingId);
     if (!Number.isInteger(listingId) || listingId <= 0) {
         throw createError(400, "invalid listing id");
     }
 
     await deleteListing(listingId, sellerId);
     return res.status(200).json({ message: 'Listing removed' });
+}
+
+export async function updateListingRouteHandler(req, res) {
+    const sellerId = req.user.seller?.id;
+    if(!sellerId) throw createError(403, "only sellers can update inventory");
+    const listingId = Number(req.params.listingId);
+    if (!Number.isInteger(listingId) || listingId <= 0) {
+        throw createError(400, "invalid listing id");
+    }
+    const body = req.body;
+    const updatedListing = await updateListing(listingId, sellerId, body);
+    res.status(200).json({message : "Updated successfully", updatedListing});
+}
+
+export async function getAllListingRouteHandler(req, res) {
+    const sellerId = req.user.seller?.id
+    if(!sellerId) throw createError(403, "only sellers can read inventory");
+    const listings = await getAllListing(sellerId);
+    return res.status(200).json({listings});
+}
+
+export async function getListingRouteHandler(req, res) {
+    const sellerId = req.user.seller?.id;
+    if(!sellerId) throw createError(403, "only sellers can read inventory");
+    const listingId = Number(req.params.listingId);
+    if (!Number.isInteger(listingId) || listingId <= 0) {
+        throw createError(400, "invalid listing id");
+    }
+    const listing = await getListing(listingId, sellerId);
+    return res.status(200).json({listing});
 }
