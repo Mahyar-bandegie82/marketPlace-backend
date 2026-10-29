@@ -2,7 +2,6 @@ import express from "express";
 import {signUpSchema, loginSchema, changeCredentialsSchema} from "../../../../validation/auth/users.auth.js"
 import {accessVerification} from "../../../middleware/authMiddleware.js";
 import {attachAbility, authorize} from "../../../middleware/casl.authorization.js";
-import {validateJoiSchema} from "../../../middleware/joiValidationMiddleware.js";
 import {connectRedis} from "../../../../loader/redis.loader.js";
 import createError from "http-errors";
 import jwt from "jsonwebtoken";
@@ -12,7 +11,7 @@ import {
     revokeFamily,
     saveRefreshToken
 } from "../../../../services/redis/refreshToken.service.js";
-import {generateAccessToken, generateRefreshToken} from "../../../../helper/helper.js";
+import {generateAccessToken, generateRefreshToken, joiValidator} from "../../../../helper/helper.js";
 import {changeUserInfo, login, sanitizeUser, signUp} from "../../../../services/auth/user.auth.service.js";
 import crypto from "crypto";
 
@@ -48,8 +47,9 @@ router.put('/refresh', async (req, res) => {
     res.cookie("refreshToken", refreshToken, CLEAR_COOKIE_OPTIONS);
     return res.status(200).json({accessToken});
 })
-router.post('/signup',validateJoiSchema(signUpSchema), async (req, res) => {
-    const user = await signUp(req.body);
+router.post('/signup', async (req, res) => {
+    const body = await joiValidator(signUpSchema, req.body);
+    const user = await signUp(body);
     const familyId = crypto.randomUUID();
     const accessToken = generateAccessToken(user.id)
     const refreshToken = generateRefreshToken(user.id, familyId);
@@ -61,8 +61,9 @@ router.post('/signup',validateJoiSchema(signUpSchema), async (req, res) => {
         accessToken,
     });
 })
-router.post('/login', validateJoiSchema(loginSchema), async (req, res) => {
-    const user = await login(req.body);
+router.post('/login', async (req, res) => {
+    const body = await joiValidator(loginSchema, req.body)
+    const user = await login(body);
     const familyId = crypto.randomUUID();
 
     const accessToken = generateAccessToken(user.id)
@@ -84,9 +85,10 @@ router.post('/logout', async (req, res) => {
     res.status(200).json({message: 'Logged out successfully'});
 })
 router.use(accessVerification, attachAbility)
-router.put('/editinfo',authorize('update', 'User'), validateJoiSchema(changeCredentialsSchema) , async (req, res) => {
-    const changed = await changeUserInfo(req.id, req.body.changes);
-    const changedPassword = req.body.changes.password
+router.put('/editinfo',authorize('update', 'User'), async (req, res) => {
+    const body = await joiValidator(changeCredentialsSchema, req.body);
+    const changed = await changeUserInfo(req.id, body.changes);
+    const changedPassword = body.changes.password
     if(changedPassword) {
         await revokeAllForUser(changed.id)
         res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
