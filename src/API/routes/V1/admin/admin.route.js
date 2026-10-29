@@ -19,4 +19,5 @@ router.patch('/verifySellers/:userId', authorize('verify', 'Seller'), validateJo
 router.delete('/deleteSellers/:userId', authorize('delete', 'Seller'), validateJoiSchema(SellerParamsSchema, 'params'), deleteSellerRouteHandler);
 router.put('/unverifySeller/:userId', authorize('unverify', 'Seller'),validateJoiSchema(SellerParamsSchema, 'params'), unverifySellerRouteHandler);
 router.post('/addProductCategory', authorize('manage', 'ProductCategory'), validateJoiSchema(addProductCategory), addToProductCategoryRouteHandler);
+
 export default router;
