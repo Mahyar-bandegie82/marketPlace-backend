@@ -1,15 +1,10 @@
 import { AbilityBuilder } from '@casl/ability';
 import { createPrismaAbility } from '@casl/prisma';
 
-/**
- * user = null (guest) or
- * { id, admin: {id}|null, client: {id}|null, seller: {id, verified}|null }
- * Subject names = your Prisma model names.
- */
+
 export function defineAbilityFor(user) {
     const { can, cannot, build } = new AbilityBuilder(createPrismaAbility);
 
-    // ───────────── Guests (everyone, logged in or not) ─────────────
     can('read', 'Product');
     can('read', 'ProductCategory');
     can('read', 'SellerInventory', { isActive: true });

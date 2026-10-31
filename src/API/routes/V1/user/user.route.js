@@ -4,18 +4,27 @@ import {
     addressVal,
     deleteAddressval,
     editAddressVal,
-    ProductIdSchema
+    ProductIdSchema,
+    CartItemSchema,
+    getCartItemsSchema,
+    clearCartItemSchema
 } from "../../../../validation/user/user.validation.js";
 import {attachAbility, authorize} from "../../../middleware/casl.authorization.js";
 import {joiValidator} from "../../../../helper/helper.js";
 import {
+    addCartItem,
     addFavourite, clearFavourites,
     deleteUserAddress,
     editAddress,
+    getCartItems,
     getFavourites,
     readUserAddress,
     registerAddress,
-    removeFavourite
+    removeFavourite,
+    removeCartItem,
+    incrementquantityToCartItem,
+    decrementquantityToCartItem,
+    clearCart,
 } from "../../../../services/user/user.service.js";
 
 const router = express.Router();
@@ -67,4 +76,40 @@ router.delete('/clearfavoritedItems', authorize('delete', 'FavouriteProducts'), 
     return res.status(200).json({message: "Favourites cleared", removed});
 })
 
+
+router.post('/addCartItem', authorize('manage', 'CartItem'), async (req, res) => {
+    const {listingId, shoppingCartId} = await joiValidator(CartItemSchema, req.body)
+    const cartItem = await addCartItem(shoppingCartId ,listingId);
+    return res.status(201).json({message: "Item added to cart", cartItem});
+});
+
+router.delete('/deleteCartItem', authorize('manage', 'CartItem'), async (req, res) => {
+    const {listingId, shoppingCartId} = await joiValidator(CartItemSchema, req.body)
+    const cartItem = await removeCartItem(shoppingCartId, listingId);
+    return res.status(200).json({message: "Item removed from cart", cartItem});
+});
+
+router.put('/incrementCartItemquantity', authorize('manage', 'CartItem'), async (req, res) => {
+    const {listingId, shoppingCartId} = await joiValidator(CartItemSchema, req.body)
+    const cartItem = await incrementquantityToCartItem(shoppingCartId, listingId);
+    return res.status(201).json({message: "Item quantity incremented", cartItem});
+});
+
+router.put('/decrementCartItemquantity', authorize('manage', 'CartItem'), async (req, res) => {
+    const {listingId, shoppingCartId} = await joiValidator(CartItemSchema, req.body)
+    const cartItem = await decrementquantityToCartItem(shoppingCartId, listingId);
+    return res.status(201).json({message: "Item quantity decremented", cartItem});
+});
+
+router.delete('/clearCartItems', authorize('manage', 'CartItem'), async (req, res) => {
+    const {shoppingCartId} = await joiValidator(clearCartItemSchema, req.body)
+    const removed = await clearCart(shoppingCartId);
+    return res.status(200).json({message: "Cart cleared", removed});
+});
+
+router.get('/getCartItems', authorize('manage', 'CartItem'), async (req, res) => {
+    const {shoppingCartId} = await joiValidator(getCartItemsSchema, req.body)
+    const cartItems = await getCartItems(shoppingCartId);
+    return res.status(200).json({message: "Cart items retrieved", cartItems});
+});
 export default router;

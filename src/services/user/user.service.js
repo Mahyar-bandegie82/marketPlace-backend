@@ -215,7 +215,7 @@ export async function clearCart(shoppingCartId) {
     return count;
 }
 
-export async function addquantityToCartItem(shoppingCartId, sellerInventoryId) {
+export async function incrementquantityToCartItem(shoppingCartId, sellerInventoryId) {
     const exists = await getcartItem(shoppingCartId, sellerInventoryId);
     if (!exists) throw createError(404, "item not found in cart");
 
@@ -227,7 +227,7 @@ export async function addquantityToCartItem(shoppingCartId, sellerInventoryId) {
     });
 }
 
-export async function depletequantityToCartItem(shoppingCartId, sellerInventoryId) {
+export async function decrementquantityToCartItem(shoppingCartId, sellerInventoryId) {
     const exists = await getcartItem(shoppingCartId, sellerInventoryId);
     if (!exists) throw createError(404, "item not found in cart");
 
@@ -241,4 +241,31 @@ export async function depletequantityToCartItem(shoppingCartId, sellerInventoryI
         where: { shoppingCartId_sellerInventoryId: { shoppingCartId, sellerInventoryId } },
         data: { quantity: { decrement: 1 } },
     });
+}
+
+export async function getCartItems(shoppingCartId) {
+    const allitems = await prisma.cartItem.findMany({
+        where: { shoppingCartId },
+        select: {
+            quantity: true,
+            sellerInventory: {
+                select: {
+                    price:true, condition : true,
+                    product: { select: { productName: true, images: true} },
+                }
+            }
+        }
+    });
+    console.log(allitems);
+
+    const sanatizedAllitems = allitems.map( items => {
+        return {
+            productName : items.sellerInventory.product.productName,
+            quantity : items.quantity,
+            price : items.sellerInventory.price,
+            condition : items.sellerInventory.condition,
+            images : items.sellerInventory.product.images
+        }
+    })
+    return sanatizedAllitems;
 }
