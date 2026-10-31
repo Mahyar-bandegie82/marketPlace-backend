@@ -58,6 +58,14 @@ export async function addcategory(body) {
     })
 }
 
+export async function detectRepeatedProduct(){
+    const repeatedProduct = await prisma.product.findMany({
+        where : {
+            
+        }
+    })
+}
+
 // async function makeAdmin(userId) {
 //     const user = await prisma.admin.create({
 //         data: {userId : userId}

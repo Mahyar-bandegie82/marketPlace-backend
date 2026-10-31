@@ -32,9 +32,17 @@ export async function addToInventory(sellerId, body) {
         let id = productId;
         console.log(sellerId, body);
         if (id === undefined) {
+            const existingProduct = await tx.product.findUnique({
+                where: { model_brand: { model: product.model, brand: product.brand } },
+            })
+            if(existingProduct){
+                throw createError(409, "product with this model and brand already exists")
+            }
             const created = await tx.product.create({
                 data: {
                     productName: product.productName,
+                    model: product.model,
+                    brand: product.brand,
                     description: product.description,
                     attributes: product.attributes,
                     images: product.images,
@@ -52,7 +60,12 @@ export async function addToInventory(sellerId, body) {
             });
             if (!existing) throw createError(404, "product not found");
         }
-
+        const repeated = await tx.sellerInventory.findUnique({
+            where : {
+                sellerId_productId_condition: {sellerId, productId: id, condition}
+            }
+        })
+        if (repeated) throw createError(409, "you already have a listing for this product");
         return tx.sellerInventory.create({
             data: {sellerId, productId: id, quantity, price, condition, productWaranty},
             include: {product: true},

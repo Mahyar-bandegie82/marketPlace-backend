@@ -44,8 +44,15 @@ export const sellerSignUpSchema = Joi.object({
     storeName: Joi.string().required(),
 });
 
+const productWaranty = Joi.object({
+    corp : Joi.string().trim().required().max(30),
+    time : Joi.date().required().raw(),
+})
+
 const productSchema = Joi.object({
-    productName: Joi.string().trim().min(2).required(),
+    productName: Joi.string().trim().min(2).lowercase().required(),
+    model: Joi.string().trim().lowercase().max(30).required(),
+    brand: Joi.string().trim().lowercase().max(20).required(),
     description: Joi.string().trim().required(),
     categories: Joi.array().items(Joi.string()).min(1).required(),
     attributes: Joi.object().default({}),
@@ -58,8 +65,8 @@ export const addInventorySchema = Joi.object({
     product: productSchema,
     quantity: Joi.number().integer().min(0).required(),
     price: Joi.number().integer().positive().required(),
-    condition: Joi.string().valid('NEW', 'USED', 'BARELY_USED'),
-    productWaranty: Joi.object(),
+    condition: Joi.string().valid('NEW', 'USED', 'BARELY_USED').default('NEW'),
+    productWaranty: productWaranty,
 }).xor('productId', 'product');
 
 export const ListingIdSchema = Joi.object({
@@ -69,5 +76,5 @@ export const ListingIdSchema = Joi.object({
 export const updateListingSchema = Joi.object({
     quantity: Joi.number().integer().min(0),
     price: Joi.number().positive(),
-    condition: Joi.string().valid('NEW', 'USED'),  // use your enum values
+    condition: Joi.string().valid('NEW', 'USED', 'BARELY_USED') 
 }).min(1);

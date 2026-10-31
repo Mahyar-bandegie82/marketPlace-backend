@@ -102,12 +102,15 @@ model Product {
   productName       String
   description       String
   rating            Float?              @default(0)
+  model             String              
+  brand             String            
   attributes        Json                @default("{}")
   images            Json                @default("[]")
   videos            Json                @default("[]")
   categories        ProductCategory[]
   listings          SellerInventory[]
   favouriteProducts FavouriteProducts[]
+  @@unique([model, brand])
 }
 
 model ProductCategory {
