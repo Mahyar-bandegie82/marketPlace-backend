@@ -79,7 +79,7 @@ router.delete('/clearfavoritedItems', authorize('delete', 'FavouriteProducts'), 
 
 router.post('/addCartItem', authorize('manage', 'CartItem'), async (req, res) => {
     const {listingId, shoppingCartId} = await joiValidator(CartItemSchema, req.body)
-    const cartItem = await addCartItem(shoppingCartId ,listingId);
+    const cartItem = await addCartItem(shoppingCartId ,listingId, req.id);
     return res.status(201).json({message: "Item added to cart", cartItem});
 });
 

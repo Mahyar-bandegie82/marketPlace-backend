@@ -183,20 +183,28 @@ async function getcartItem(shoppingCartId, sellerInventoryId) {
     return exists;
 }
 
-export async function addCartItem(shoppingCartId, sellerInventoryId) {
+export async function addCartItem(shoppingCartId, sellerInventoryId, userId) {
+    const listing = await prisma.sellerInventory.findUnique({
+        where: {id: sellerInventoryId},
+        select: {
+            isActive: true,
+            quantity: true,
+            seller: {select: {userId: true}},
+        },
+    });
+
+    if (!listing || !listing.isActive) throw createError(404, "listing not found");
+    if (listing.seller.userId === userId) {
+        throw createError(403, "you cannot add your own listing to your cart");
+    }
+    if (listing.quantity <= 0) throw createError(409, "item is out of stock");
+
     const exists = await getcartItem(shoppingCartId, sellerInventoryId);
     if (exists) throw createError(409, "item already exists in cart");
 
-    const listing = await getActiveListing(sellerInventoryId);
-    if (listing.quantity <= 0 || !listing.isActive) throw createError(400, "item is out of stock or inactive");
-
     return await prisma.cartItem.create({
-        data: {
-            quantity: 1,
-            shoppingCartId,
-            sellerInventoryId,
-        }
-    })
+        data: {quantity: 1, shoppingCartId, sellerInventoryId},
+    });
 }
 
 export async function removeCartItem(shoppingCartId, sellerInventoryId) {
@@ -245,12 +253,16 @@ export async function decrementquantityToCartItem(shoppingCartId, sellerInventor
 
 export async function getCartItems(shoppingCartId) {
     const allitems = await prisma.cartItem.findMany({
-        where: { shoppingCartId },
+        where: {
+            shoppingCartId,
+            sellerInventory: { isActive: true, quantity: { gt: 0 } }
+        },
         select: {
             quantity: true,
+            sellerInventoryId: true,
             sellerInventory: {
                 select: {
-                    price:true, condition : true,
+                    price:true, condition : true, 
                     product: { select: { productName: true, images: true} },
                 }
             }
@@ -258,7 +270,7 @@ export async function getCartItems(shoppingCartId) {
     });
     console.log(allitems);
 
-    const sanatizedAllitems = allitems.map( items => {
+    const sanatizedActiveCartItems = activeCartItem.map( items => {
         return {
             productName : items.sellerInventory.product.productName,
             quantity : items.quantity,
@@ -267,5 +279,5 @@ export async function getCartItems(shoppingCartId) {
             images : items.sellerInventory.product.images
         }
     })
-    return sanatizedAllitems;
+    return sanatizedActiveCartItems;
 }
