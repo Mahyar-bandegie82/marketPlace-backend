@@ -262,6 +262,7 @@ export async function getCartItems(shoppingCartId) {
             sellerInventoryId: true,
             sellerInventory: {
                 select: {
+                    id: true,
                     price:true, condition : true, 
                     product: { select: { productName: true, images: true} },
                 }
@@ -270,8 +271,9 @@ export async function getCartItems(shoppingCartId) {
     });
     console.log(allitems);
 
-    const sanatizedActiveCartItems = activeCartItem.map( items => {
+    const sanatizedActiveCartItems = allitems.map( items => {
         return {
+            listingId : items.sellerInventory.id,
             productName : items.sellerInventory.product.productName,
             quantity : items.quantity,
             price : items.sellerInventory.price,
