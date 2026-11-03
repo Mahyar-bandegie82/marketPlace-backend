@@ -167,6 +167,14 @@ export async function getFavourites(clientId) {
 }
 
 
+export async function getShoppingCartIdWithUserId(userId) {
+    const shoppingCart = await prisma.shoppingCart.findFirst({
+        where: {client: {userId: userId}},
+        select: {id : true}
+    })
+    if (!shoppingCart) throw createError(404, "shopping cart not found");
+    return shoppingCart.id;
+}
 async function getActiveListing(sellerInventoryId) {
     const listing = await prisma.sellerInventory.findUnique({
         where: { id: sellerInventoryId },

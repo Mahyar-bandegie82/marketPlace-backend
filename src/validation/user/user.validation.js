@@ -25,12 +25,5 @@ export const ProductIdSchema = Joi.object({
 
 export const CartItemSchema = Joi.object({
     listingId: Joi.number().integer().positive().required(),
-    shoppingCartId: Joi.number().integer().positive().required(),
 });
 
-export const getCartItemsSchema = Joi.object({
-    shoppingCartId: Joi.number().integer().positive().required(),
-});
-export const clearCartItemSchema = Joi.object({
-    shoppingCartId: Joi.number().integer().positive().required(),
-});
