@@ -66,6 +66,15 @@ export async function detectRepeatedProduct(){
     })
 }
 
+export async function updateorderStatus(orderId, status) {
+    const order = await prisma.order.update({
+        where: { id: orderId },
+        data: { orderStatus: status }
+    })
+    if (!order) throw createError(404, "order not found");
+    return order;
+}
+
 // async function makeAdmin(userId) {
 //     const user = await prisma.admin.create({
 //         data: {userId : userId}

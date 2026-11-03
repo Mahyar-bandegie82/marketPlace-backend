@@ -39,7 +39,7 @@ export function defineAbilityFor(user) {
         can('create', 'Comment', { clientId: client.id });
         can('update', 'Comment', ['massage', 'images', 'videos'], { clientId: client.id });
         can('delete', 'Comment', { clientId: client.id });
-        can('react', 'Comment');   // like / dislike someone's comment
+        can('react', 'Comment');   
 
         can('create', 'Seller')
 
@@ -50,7 +50,7 @@ export function defineAbilityFor(user) {
             orderStatus: { in: ['PROCESSING'] },
         });
         can('read', 'OrderItems', { order: { clientId: client.id } });
-        can('create', 'OrderItems');   // narrowed by the `cannot` rule below
+        can('create', 'OrderItems');  
     }
 
     if (seller) {

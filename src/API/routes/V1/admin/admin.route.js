@@ -1,13 +1,15 @@
 import express from 'express';
 import {accessVerification} from "../../../middleware/authMiddleware.js";
-import {addProductCategory, SellerParamsSchema} from "../../../../validation/admin/admin.validation.js";
+import {addProductCategory, SellerParamsSchema, updateOrderStatusSchema} from "../../../../validation/admin/admin.validation.js";
+import { OrderIdSchema} from "../../../../validation/order/order.validation.js";
 import {attachAbility, authorize} from "../../../middleware/casl.authorization.js";
 import {
     addcategory,
     revokeSeller,
     seeSellerRequests,
     unverifySeller,
-    verifySeller
+    verifySeller,
+    updateorderStatus
 } from "../../../../services/admin/admin.service.js";
 import {joiValidator} from "../../../../helper/helper.js";
 
@@ -39,4 +41,10 @@ router.post('/addProductCategory', authorize('manage', 'ProductCategory'), async
     return res.status(200).json({message: 'ProductCategory added successfully ', productCategory} );
 });
 
+router.patch('/updateOrderStatus/:orderId', authorize('update', 'Order'), async (req, res) => {
+    const {orderId} = await joiValidator(OrderIdSchema, req.params)
+    const {status} = await joiValidator(updateOrderStatusSchema, req.body)
+    const order = await updateorderStatus(orderId, status)
+    return res.status(200).json({ message: 'Order status updated successfully', order });
+});
 export default router;

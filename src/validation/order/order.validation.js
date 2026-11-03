@@ -18,5 +18,5 @@ export const orderListQuerySchema = Joi.object({
 
 export const updateOrderSchema = Joi.object({
     address: Joi.string().trim().min(5).max(200),
-    postalCode: Joi.string().trim().pattern(/^\d{5,10}$/),
+    postalCode: Joi.string().trim()
 }).min(1).required();

@@ -85,7 +85,6 @@ export async function cancelOrder(userId, orderId) {
             throw createError(409, `an order that is ${order.orderStatus} cannot be canceled`);
         }
 
-        // give the stock back
         const items = await tx.orderItems.findMany({
             where: { orderId },
             select: { listingId: true, quantity: true },

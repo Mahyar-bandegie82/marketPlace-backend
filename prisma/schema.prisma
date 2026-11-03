@@ -151,7 +151,7 @@ model Order {
   client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId    Int
   address     String
-  postalCode  Int
+  postalCode  String
 
   @@index([clientId])
 }

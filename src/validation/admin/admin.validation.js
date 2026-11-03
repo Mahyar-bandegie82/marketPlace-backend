@@ -18,3 +18,7 @@ export const SellerParamsSchema = Joi.object({
 export const addProductCategory = Joi.object({
     categoryName: Joi.string().trim().required(),
 })
+
+export const updateOrderStatusSchema = Joi.object({
+    status: Joi.string().valid('PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELED', 'RETURNED', 'REFUNDED').required(),
+});
