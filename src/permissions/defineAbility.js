@@ -44,9 +44,10 @@ export function defineAbilityFor(user) {
         can('create', 'Seller')
 
         can(['create', 'read'], 'Order', { clientId: client.id });
+        can('update', 'Order', ['address', 'postalCode'], { clientId: client.id, orderStatus: { in: ['PROCESSING'] } });
         can('cancel', 'Order', {
             clientId: client.id,
-            orderStatus: { in: ['PENDING_PAYMENT', 'PROCESSING'] },
+            orderStatus: { in: ['PROCESSING'] },
         });
         can('read', 'OrderItems', { order: { clientId: client.id } });
         can('create', 'OrderItems');   // narrowed by the `cannot` rule below

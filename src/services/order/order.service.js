@@ -101,6 +101,16 @@ export async function cancelOrder(userId, orderId) {
     });
 }
 
+export async function updateProcessingOrder(userId, orderId, {address, postalCode}) {
+    const orderUpdated =  prisma.order.update({
+        where: {id: orderId, orderStatus: 'PROCESSING', client: {userId}},
+        data: {address, postalCode},
+        select: {id: true, orderStatus: true, address: true, postalCode: true},
+    });
+    if (!orderUpdated) throw createError(404, "order not found or not in PROCESSING status");
+    return orderUpdated;
+}
+
 const orderSelect = {
     id: true,
     orderStatus: true,
@@ -118,8 +128,8 @@ const orderSelect = {
             listing: {
                 select: {
                     condition: true,
-                    product: {select: {productName: true, images: true}},
-                    seller: {select: {storeName: true}},
+                    product: { select: { productName: true, images: true } },
+                    seller: { select: { storeName: true } },
                 },
             },
         },
@@ -147,7 +157,7 @@ function toOrderDto(order) {
         deliveredAt: order.deliveredAt,
         address: order.address,
         postalCode: order.postalCode,
-        items : items,
+        items: items,
         totalAmount: items.reduce((sum, i) => sum + i.lineTotal, 0),
     };
 }
@@ -155,10 +165,10 @@ function toOrderDto(order) {
 export async function getActiveOrders(userId) {
     const orders = await prisma.order.findMany({
         where: {
-            client: {userId},
-            orderStatus: {in: ['PROCESSING', 'SHIPPED']},
+            client: { userId },
+            orderStatus: { in: ['PROCESSING', 'SHIPPED'] },
         },
-        orderBy: {orderDate: 'desc'},
+        orderBy: { orderDate: 'desc' },
         select: orderSelect,
     });
 
