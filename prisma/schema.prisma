@@ -89,7 +89,6 @@ model SellerInventory {
   product            Product            @relation(fields: [productId], references: [id])
   cartItems          CartItem[]
   orderItems         OrderItems[]
-  comments           Comment[]
   promotionsProducts PromotionListing[]
 
   @@unique([sellerId, productId, condition])
@@ -109,6 +108,7 @@ model Product {
   categories        ProductCategory[]
   listings          SellerInventory[]
   favouriteProducts FavouriteProducts[]
+  comments          Comment[]
 
   @@unique([model, brand])
 }
@@ -179,12 +179,12 @@ model Comment {
   createdAt DateTime        @default(now())
   images    Json            @default("[]")
   videos    Json            @default("[]")
-  listingId Int
-  listing   SellerInventory @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   client    Client          @relation(fields: [clientId], references: [id])
   clientId  Int
 
-  @@unique([listingId, clientId])
+  @@unique([productId, clientId])
   @@index([clientId])
 }
 
