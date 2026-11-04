@@ -66,6 +66,7 @@ model Seller {
   userId    Int               @unique
   user      User              @relation(fields: [userId], references: [id])
   listings  SellerInventory[]
+  promotion Promotions[]
   verified  Boolean           @default(false)
 }
 
@@ -80,6 +81,7 @@ model SellerInventory {
   id                 Int                @id @default(autoincrement())
   quantity           Int
   price              Int
+  discountedPrice    Int                @default(0)
   condition          Condition          @default(NEW)
   isActive           Boolean            @default(true)
   sellerId           Int
@@ -157,31 +159,31 @@ model Order {
 }
 
 model OrderItems {
-  id              Int             @id @default(autoincrement())
-  unitPrice       Int
-  quantity        Int
-  discountPercent Int             @default(0)
-  orderId         Int
-  listingId       Int
-  listing         SellerInventory @relation(fields: [listingId], references: [id])
-  order           Order           @relation(fields: [orderId], references: [id])
+  id        Int             @id @default(autoincrement())
+  unitPrice Int
+  quantity  Int
+  // discountPercent Int             @default(0)
+  orderId   Int
+  listingId Int
+  listing   SellerInventory @relation(fields: [listingId], references: [id])
+  order     Order           @relation(fields: [orderId], references: [id])
 
   @@unique([orderId, listingId])
   @@index([listingId])
 }
 
 model Comment {
-  id        Int             @id @default(autoincrement())
-  like      Int             @default(0)
+  id        Int      @id @default(autoincrement())
+  like      Int      @default(0)
   rating    Float
-  dislike   Int             @default(0)
+  dislike   Int      @default(0)
   massage   String
-  createdAt DateTime        @default(now())
-  images    Json            @default("[]")
-  videos    Json            @default("[]")
+  createdAt DateTime @default(now())
+  images    Json     @default("[]")
+  videos    Json     @default("[]")
   productId Int
-  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  client    Client          @relation(fields: [clientId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  client    Client   @relation(fields: [clientId], references: [id])
   clientId  Int
 
   @@unique([productId, clientId])
@@ -194,6 +196,8 @@ model Promotions {
   startDate          DateTime           @default(now())
   endDate            DateTime
   promotionsProducts PromotionListing[]
+  seller             Seller             @relation(fields: [sellerId], references: [id])
+  sellerId           Int
 }
 
 model PromotionListing {
