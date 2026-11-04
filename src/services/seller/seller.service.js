@@ -304,7 +304,7 @@ export async function deleteListingfromPromotion(userId, promotionId, listingId)
             where: { id: promotionId },
             select: { sellerId: true }
         })
-        if (promotion.sellerId !== seller || !promotion) { throw createError(400, "") }promotion not found
+        if (promotion.sellerId !== seller || !promotion) { throw createError(400, "promotion not found") }
 
         const { count } = await tx.promotionListing.deleteMany({
             where: { listingId, promotionId },
