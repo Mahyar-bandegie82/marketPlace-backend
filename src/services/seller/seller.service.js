@@ -3,8 +3,7 @@ import { getProfile } from "../auth/user.auth.service.js";
 import bcrypt from "bcrypt";
 
 import { prismaPool } from "../../helper/helper.js";
-import { create } from "axios";
-import { func } from "joi";
+
 
 const prisma = prismaPool
 
