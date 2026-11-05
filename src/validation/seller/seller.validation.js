@@ -78,3 +78,31 @@ export const updateListingSchema = Joi.object({
     price: Joi.number().positive(),
     condition: Joi.string().valid('NEW', 'USED', 'BARELY_USED') 
 }).min(1);
+
+const id = Joi.number().integer().positive().required();
+const discount = Joi.number().integer().min(1).max(99).required();
+
+export const PromotionIdSchema = Joi.object({
+    promotionId: id,
+}).required();
+
+export const promotionListingParamsSchema = Joi.object({
+    promotionId: id,
+    listingId: id,
+}).required();
+
+export const createPromotionSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(50).required(),
+    startDate: Joi.date().iso().default(() => new Date()),
+    endDate: Joi.date().iso().greater(Joi.ref('startDate')).min('now').required(),
+}).required();
+
+export const addListingToPromotionSchema = Joi.object({
+    promotionId: id,
+    listingId: id,
+    discount,
+}).required();
+
+export const updatePromotionDiscountSchema = Joi.object({
+    discount,
+}).required();

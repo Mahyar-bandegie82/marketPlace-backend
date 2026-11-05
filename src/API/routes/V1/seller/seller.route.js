@@ -82,4 +82,48 @@ router.get('/getSellerInventory/:listingId', authorize('read', 'SellerInventory'
     const listing = await getListing(listingId, sellerId);
     return res.status(200).json({listing});
 })
+
+
+router.post('/createPromotion', authorize('create', 'Promotions'), async (req, res) => {
+    const body = await joiValidator(createPromotionSchema, req.body);
+    const sellerId = await getSellerIdWithUserId(req.id);
+    const promotion = await startPromotion(body, sellerId);
+    return res.status(201).json({message: "promotion created", promotion});
+});
+
+router.get('/getPromotions', authorize('read', 'Promotions'), async (req, res) => {
+    const promotions = await getPromotions(req.id);
+    return res.status(200).json({promotions});
+});
+
+router.get('/getPromotionListings/:promotionId', authorize('read', 'Promotions'), async (req, res) => {
+    const {promotionId} = await joiValidator(PromotionIdSchema, req.params);
+    const promotion = await getPromotionListing(req.id, promotionId);
+    return res.status(200).json({promotion});
+});
+
+router.post('/addListingToPromotion', authorize('create', 'Promotions'), async (req, res) => {
+    const body = await joiValidator(addListingToPromotionSchema, req.body);
+    const item = await addListingToPromotion(body, req.id);
+    return res.status(201).json({message: "listing added to promotion", item});
+});
+
+router.patch('/updatePromotionDiscount/:promotionId/:listingId', authorize('update', 'Promotions'), async (req, res) => {
+    const params = await joiValidator(promotionListingParamsSchema, req.params);
+    const {discount} = await joiValidator(updatePromotionDiscountSchema, req.body);
+    const result = await updatePromotionListing(req.id, {...params, discount});
+    return res.status(200).json({message: "discount updated", result});
+});
+
+router.delete('/deleteListingFromPromotion/:promotionId/:listingId', authorize('delete', 'Promotions'), async (req, res) => {
+    const {promotionId, listingId} = await joiValidator(promotionListingParamsSchema, req.params);
+    const result = await deleteListingfromPromotion(req.id, promotionId, listingId);
+    return res.status(200).json({message: "listing removed from promotion", result});
+});
+
+router.delete('/deletePromotion/:promotionId', authorize('delete', 'Promotions'), async (req, res) => {
+    const {promotionId} = await joiValidator(PromotionIdSchema, req.params);
+    const result = await deletePromotion(req.id, promotionId);
+    return res.status(200).json({message: "promotion deleted", result});
+});
 export default router;
