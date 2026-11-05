@@ -6,13 +6,26 @@ import {
     addInventorySchema,
     sellerSignUpSchema,
     ListingIdSchema,
-    updateListingSchema
+    updateListingSchema,
+    PromotionIdSchema,
+    addListingToPromotionSchema,
+    createPromotionSchema,
+    promotionListingParamsSchema,
+    updatePromotionDiscountSchema, 
 } from "../../../../validation/seller/seller.validation.js";
 import {
     addToInventory,
     deleteListing, getAllListing, getListing,
     sellerSignUp,
-    updateListing
+    updateListing,
+    addListingToPromotion,
+    deleteListingfromPromotion,
+    deletePromotion,
+    getPromotionListing,
+    getPromotions,
+    getSellerIdWithUserId,
+    startPromotion,
+    updatePromotionListing,
 } from "../../../../services/seller/seller.service.js";
 import createError from "http-errors";
 import {joiValidator} from "../../../../helper/helper.js";
