@@ -71,6 +71,8 @@ const changeCredentialsSchema = Joi.object({
             "changes must contain at least one of: userName, phoneNumber, password",
     }),
 })
-
+export const verifyOtpSchema = Joi.object({
+    otp: Joi.string().trim().required().min(6).max(6)
+})
 
 export { loginSchema, changeCredentialsSchema, signUpSchema };

@@ -15,9 +15,14 @@ export async function redisSaveOtp(otp, email, purpose) {
     if (!(purpose === "signup" || purpose === "passwordChange")) {
         throw createError(400, 'invalid database action')
     }
-    const key = action[purpose](email)
+    const key = action[purpose](email.toLowerCase());
     const attemptsKey = `${key}:attempts`;
+    const cooldownKey = `${key}:cooldown`;
+
     const encryptedOtp = await hashPassword(String(otp));
+
+    const allowed = await redis.set(cooldownKey, '1', { EX: COOLDOWN, NX: true });
+    if (!allowed) throw createError(429, "please wait before requesting another otp");
 
     await redis
         .multi()
@@ -30,7 +35,7 @@ export async function verifyOtp(otp, email, purpose) {
     if (!(purpose === "signup" || purpose === "passwordChange")) {
         throw createError(400, 'invalid database action')
     }
-    const key = action[purpose](email)
+    const key = action[purpose](email.toLowerCase())
     const attemptsKey = `${key}:attempts`;
 
     const hash = await redis.get(key)
@@ -45,7 +50,7 @@ export async function verifyOtp(otp, email, purpose) {
     }
 
     if (!await comparePassword(String(otp), hash)) {
-        throw createError(404, "otp is incorrect")
+        throw createError(400, "otp is incorrect")
     }
 
     await redis.del([key, attemptsKey]);

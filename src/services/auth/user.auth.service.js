@@ -73,3 +73,9 @@ export async function changeUserInfo(userId, json) {
     return prisma.user.update({where: {id: userId}, data});
 }
 
+export async function markOtpVerified(userId) {
+    return prisma.user.update({ where: { id: userId }, data: { otpVerified: true } });
+}
+export async function unverifyUser(userId) {
+    return prisma.user.update({ where: { id: userId }, data: { otpVerified: false } });
+}

@@ -34,6 +34,7 @@ model User {
   password    String
   phoneNumber String  @unique
   email       String  @unique
+  otpVerified Boolean @default(false)
   seller      Seller?
   client      Client?
   admin       Admin?

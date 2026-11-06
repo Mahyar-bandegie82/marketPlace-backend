@@ -48,7 +48,7 @@ export function generateOtp() {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function main() {
+export async function generateOtp(email) {
   const code = crypto.randomInt(100000, 999999);
 
   const { data, error } = await resend.emails.send({
@@ -68,5 +68,3 @@ async function main() {
   }
   console.log("Sent:", data, "| code:", code);
 }
-
-main();
