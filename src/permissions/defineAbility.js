@@ -1,15 +1,10 @@
 import { AbilityBuilder } from '@casl/ability';
 import { createPrismaAbility } from '@casl/prisma';
 
-/**
- * user = null (guest) or
- * { id, admin: {id}|null, client: {id}|null, seller: {id, verified}|null }
- * Subject names = your Prisma model names.
- */
+
 export function defineAbilityFor(user) {
     const { can, cannot, build } = new AbilityBuilder(createPrismaAbility);
 
-    // ───────────── Guests (everyone, logged in or not) ─────────────
     can('read', 'Product');
     can('read', 'ProductCategory');
     can('read', 'SellerInventory', { isActive: true });
@@ -39,34 +34,43 @@ export function defineAbilityFor(user) {
         can('manage', 'CartItem', { shoppingCart: { clientId: client.id } });
         can('create', 'FavouriteProducts', { clientId: client.id });
         can('delete', 'FavouriteProducts', { clientId: client.id });
+        can('read', 'FavouriteProducts', { clientId: client.id });
 
         can('create', 'Comment', { clientId: client.id });
         can('update', 'Comment', ['massage', 'images', 'videos'], { clientId: client.id });
         can('delete', 'Comment', { clientId: client.id });
-        can('react', 'Comment');   // like / dislike someone's comment
+        can('react', 'Comment');
 
         can('create', 'Seller')
 
         can(['create', 'read'], 'Order', { clientId: client.id });
+        can('update', 'Order', ['address', 'postalCode'], { clientId: client.id, orderStatus: { in: ['PROCESSING'] } });
         can('cancel', 'Order', {
             clientId: client.id,
-            orderStatus: { in: ['PENDING_PAYMENT', 'PROCESSING'] },
+            orderStatus: { in: ['PROCESSING'] },
         });
         can('read', 'OrderItems', { order: { clientId: client.id } });
-        can('create', 'OrderItems');   // narrowed by the `cannot` rule below
+        can('create', 'OrderItems');
     }
 
     if (seller) {
         can('read', 'Seller', { id: seller.id });
         can('update', 'Seller', ['storeName'], { id: seller.id });
 
-        can('read', 'SellerInventory', { sellerId: seller.id });
         if (seller.verified) {
             can('create', 'SellerInventory', { sellerId: seller.id });
+            can('delete', 'SellerInventory', { sellerId: seller.id });
+            can('read', 'SellerInventory', { sellerId: seller.id });
+            can('update', 'SellerInventory', ['quantity', 'price', 'condition', 'isActive', 'productWaranty'], { sellerId: seller.id });
+            can('create', 'Promotions', { sellerId: seller.id })
+            can('read', 'Promotions', { sellerId: seller.id })
+            can('delete', 'Promotions', { sellerId: seller.id })
+            can('create', 'PromotionListing', { sellerId: seller.id })
+            can('delete', 'PromotionListing', { sellerId: seller.id })
+            can('update', 'PromotionListing', { sellerId: seller.id })
+            can('read', 'PromotionListing', { sellerId: seller.id })
         }
-        can('update', 'SellerInventory',
-            ['quantity', 'price', 'condition', 'isActive', 'productWaranty'],
-            { sellerId: seller.id });
+
 
         cannot('create', 'OrderItems', { listing: { sellerId: seller.id } });
     }

@@ -1,10 +1,10 @@
 import createError from "http-errors";
-import {prismaPool} from "../../helper/helper.js";
+import { prismaPool } from "../../helper/helper.js";
 
 const prisma = prismaPool
 
 export async function registerAddress(address, userId) {
-    const client = await prisma.client.findUnique({where: {userId}});
+    const client = await prisma.client.findUnique({ where: { userId } });
     if (!client) throw createError(404, "client profile not found");
     const clientAddresesArray = [...client.Addresses]
     const clientPostalCodeArray = [...client.postalCode]
@@ -15,10 +15,10 @@ export async function registerAddress(address, userId) {
     if (postalCode_does_exist) throw createError(403, "postal code already exists");
 
     return await prisma.client.update({
-        where: {userId},
+        where: { userId },
         data: {
-            Addresses: {push: address.addressLine},
-            postalCode: {push: address.postalCode},
+            Addresses: { push: address.addressLine },
+            postalCode: { push: address.postalCode },
         },
     });
 }
@@ -44,8 +44,8 @@ export async function registerAddress(address, userId) {
 
 export async function readUserAddress(userId) {
     const client = await prisma.client.findUnique({
-        where: {userId},
-        select: {Addresses: true, postalCode: true},
+        where: { userId },
+        select: { Addresses: true, postalCode: true },
     });
     if (!client) throw createError(404, "client profile not found");
 
@@ -57,8 +57,8 @@ export async function readUserAddress(userId) {
 
 export async function deleteUserAddress(addressBody, userId) {
     const client = await prisma.client.findUnique({
-        where: {userId},
-        select: {Addresses: true, postalCode: true},
+        where: { userId },
+        select: { Addresses: true, postalCode: true },
     });
     if (!client) throw createError(404, "client profile not found");
     const allAddress = client.Addresses.map((address, i) => ({
@@ -75,7 +75,7 @@ export async function deleteUserAddress(addressBody, userId) {
         postalCode.push(address.postalCode);
     })
     return await prisma.client.update({
-        where: {userId},
+        where: { userId },
         data: {
             Addresses: addressesLine,
             postalCode: postalCode,
@@ -84,14 +84,14 @@ export async function deleteUserAddress(addressBody, userId) {
 }
 
 export async function editAddress(body, userId) {
-    const {address, changes} = body;
+    const { address, changes } = body;
     const client = await prisma.client.findUnique({
-        where: {userId},
-        select: {Addresses: true, postalCode: true},
+        where: { userId },
+        select: { Addresses: true, postalCode: true },
     });
     if (!client) throw createError(404, "client profile not found");
     const index = client.Addresses.findIndex((addressLine, i) =>
-            addressLine === address.addressLine && client.postalCode[i] === address.postalCode
+        addressLine === address.addressLine && client.postalCode[i] === address.postalCode
     );
     if (index === -1) throw createError(404, "address not found");
 
@@ -111,11 +111,183 @@ export async function editAddress(body, userId) {
     postalCode[index] = newPostalCode;
 
     return await prisma.client.update({
-        where: {userId},
+        where: { userId },
         data: {
-            Addresses : Addresses,
-            postalCode : postalCode
+            Addresses: Addresses,
+            postalCode: postalCode
         },
-        select: {Addresses : true, postalCode: true},
+        select: { Addresses: true, postalCode: true },
     })
+}
+
+export async function addFavourite(clientId, productId) {
+    const product = await prisma.product.findUnique({
+        where: { id: productId },
+        select: { id: true },
+    });
+    if (!product) throw createError(404, "product not found");
+
+    const exists = await prisma.favouriteProducts.findUnique({
+        where: { clientId_productId: { clientId, productId } },
+    })
+
+    if (exists) throw createError(401, 'already exists')
+    await prisma.favouriteProducts.create({ data: { clientId, productId } });
+}
+
+export async function removeFavourite(clientId, productId) {
+    const exists = await prisma.favouriteProducts.findUnique({
+        where: { clientId_productId: { clientId, productId } },
+        select: { productId: true },
+    });
+    if (!exists) throw createError(404, "product is not in your favourites");
+
+    await prisma.favouriteProducts.delete({
+        where: { clientId_productId: { clientId, productId } },
+    });
+}
+
+export async function clearFavourites(clientId) {
+    const { count } = await prisma.favouriteProducts.deleteMany({
+        where: { clientId },
+    });
+    return count;
+}
+
+export async function getFavourites(clientId) {
+    return await prisma.favouriteProducts.findMany({
+        where: { clientId },
+        select: {
+            product: {
+                select: { id: true, productName: true, rating: true, images: true },
+            },
+        },
+        orderBy: { productId: 'desc' },
+    });
+}
+
+
+export async function getShoppingCartIdWithUserId(userId) {
+    const shoppingCart = await prisma.shoppingCart.findFirst({
+        where: {client: {userId: userId}},
+        select: {id : true}
+    })
+    if (!shoppingCart) throw createError(404, "shopping cart not found");
+    return shoppingCart.id;
+}
+async function getActiveListing(sellerInventoryId) {
+    const listing = await prisma.sellerInventory.findUnique({
+        where: { id: sellerInventoryId },
+        select: { isActive: true, quantity: true },
+    });
+    if (!listing || !listing.isActive) throw createError(404, "listing not found");
+    return listing;
+}
+
+async function getcartItem(shoppingCartId, sellerInventoryId) {
+    const exists = await prisma.cartItem.findUnique({
+        where: { shoppingCartId_sellerInventoryId: { shoppingCartId, sellerInventoryId } },
+    })
+    return exists;
+}
+
+export async function addCartItem(shoppingCartId, sellerInventoryId, userId) {
+    const listing = await prisma.sellerInventory.findUnique({
+        where: {id: sellerInventoryId},
+        select: {
+            isActive: true,
+            quantity: true,
+            seller: {select: {userId: true}},
+        },
+    });
+
+    if (!listing || !listing.isActive) throw createError(404, "listing not found");
+    if (listing.seller.userId === userId) {
+        throw createError(403, "you cannot add your own listing to your cart");
+    }
+    if (listing.quantity <= 0) throw createError(409, "item is out of stock");
+
+    const exists = await getcartItem(shoppingCartId, sellerInventoryId);
+    if (exists) throw createError(409, "item already exists in cart");
+
+    return await prisma.cartItem.create({
+        data: {quantity: 1, shoppingCartId, sellerInventoryId},
+    });
+}
+
+export async function removeCartItem(shoppingCartId, sellerInventoryId) {
+    const exists = await getcartItem(shoppingCartId, sellerInventoryId);
+    if (!exists) throw createError(404, "item not found in cart");
+
+    return await prisma.cartItem.delete({
+        where: { shoppingCartId_sellerInventoryId: { shoppingCartId, sellerInventoryId } },
+    });
+}
+
+export async function clearCart(shoppingCartId) {
+    const { count } = await prisma.cartItem.deleteMany({
+        where: { shoppingCartId },
+    });
+    return count;
+}
+
+export async function incrementquantityToCartItem(shoppingCartId, sellerInventoryId) {
+    const exists = await getcartItem(shoppingCartId, sellerInventoryId);
+    if (!exists) throw createError(404, "item not found in cart");
+
+    const listing = await getActiveListing(sellerInventoryId);
+    if (exists.quantity >= listing.quantity || !listing.isActive) throw createError(400, "cannot add more than available stock or item is inactive");
+    return await prisma.cartItem.update({
+        where: { shoppingCartId_sellerInventoryId: { shoppingCartId, sellerInventoryId } },
+        data: { quantity: { increment: 1 } },
+    });
+}
+
+export async function decrementquantityToCartItem(shoppingCartId, sellerInventoryId) {
+    const exists = await getcartItem(shoppingCartId, sellerInventoryId);
+    if (!exists) throw createError(404, "item not found in cart");
+
+    const listing = await getActiveListing(sellerInventoryId);
+    if (exists.quantity <= 1) {
+        await removeCartItem(shoppingCartId, sellerInventoryId);
+        return 'item removed from cart as quantity reached zero';
+    }
+
+    return await prisma.cartItem.update({
+        where: { shoppingCartId_sellerInventoryId: { shoppingCartId, sellerInventoryId } },
+        data: { quantity: { decrement: 1 } },
+    });
+}
+
+export async function getCartItems(shoppingCartId) {
+    const allitems = await prisma.cartItem.findMany({
+        where: {
+            shoppingCartId,
+            sellerInventory: { isActive: true, quantity: { gt: 0 } }
+        },
+        select: {
+            quantity: true,
+            sellerInventoryId: true,
+            sellerInventory: {
+                select: {
+                    id: true,
+                    price:true, condition : true, 
+                    product: { select: { productName: true, images: true} },
+                }
+            }
+        }
+    });
+    console.log(allitems);
+
+    const sanatizedActiveCartItems = allitems.map( items => {
+        return {
+            listingId : items.sellerInventory.id,
+            productName : items.sellerInventory.product.productName,
+            quantity : items.quantity,
+            price : items.sellerInventory.price,
+            condition : items.sellerInventory.condition,
+            images : items.sellerInventory.product.images
+        }
+    })
+    return sanatizedActiveCartItems;
 }

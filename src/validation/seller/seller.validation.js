@@ -43,3 +43,66 @@ export const sellerSignUpSchema = Joi.object({
     email: email.required(),
     storeName: Joi.string().required(),
 });
+
+const productWaranty = Joi.object({
+    corp : Joi.string().trim().required().max(30),
+    time : Joi.date().required().raw(),
+})
+
+const productSchema = Joi.object({
+    productName: Joi.string().trim().min(2).lowercase().required(),
+    model: Joi.string().trim().lowercase().max(30).required(),
+    brand: Joi.string().trim().lowercase().max(20).required(),
+    description: Joi.string().trim().required(),
+    categories: Joi.array().items(Joi.string()).min(1).required(),
+    attributes: Joi.object().default({}),
+    images: Joi.array().items(Joi.string().uri()).default([]),
+    videos: Joi.array().items(Joi.string().uri()).default([]),
+});
+
+export const addInventorySchema = Joi.object({
+    productId: Joi.number().integer().positive(),
+    product: productSchema,
+    quantity: Joi.number().integer().min(0).required(),
+    price: Joi.number().integer().positive().required(),
+    condition: Joi.string().valid('NEW', 'USED', 'BARELY_USED').default('NEW'),
+    productWaranty: productWaranty,
+}).xor('productId', 'product');
+
+export const ListingIdSchema = Joi.object({
+    listingId: Joi.number().integer().positive().required()
+})
+
+export const updateListingSchema = Joi.object({
+    quantity: Joi.number().integer().min(0),
+    price: Joi.number().positive(),
+    condition: Joi.string().valid('NEW', 'USED', 'BARELY_USED') 
+}).min(1);
+
+const id = Joi.number().integer().positive().required();
+const discount = Joi.number().integer().min(1).max(99).required();
+
+export const PromotionIdSchema = Joi.object({
+    promotionId: id,
+}).required();
+
+export const promotionListingParamsSchema = Joi.object({
+    promotionId: id,
+    listingId: id,
+}).required();
+
+export const createPromotionSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(50).required(),
+    startDate: Joi.date().iso().default(() => new Date()),
+    endDate: Joi.date().iso().greater(Joi.ref('startDate')).min('now').required(),
+}).required();
+
+export const addListingToPromotionSchema = Joi.object({
+    promotionId: id,
+    listingId: id,
+    discount,
+}).required();
+
+export const updatePromotionDiscountSchema = Joi.object({
+    discount,
+}).required();

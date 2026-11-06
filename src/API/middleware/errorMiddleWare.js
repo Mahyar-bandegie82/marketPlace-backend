@@ -15,7 +15,7 @@ export function handleError(err, req, res, next) {
         message = "invalid or expired token";
     } else if (err.code === "P2002") {
         status = 409;
-        message = "a user with this phone number or email already exists";
+        message = "a record with this information already exists";
     } else if (err.code === "P2025") {
         status = 404;
         message = "record not found";

@@ -8,7 +8,7 @@ export async function seeSellerRequests() {
     let sellers = await prisma.seller.findMany({
         where: {verified: false},
         select: {
-            user : { select: { id: true , username : true , email : true , phoneNumber : true }, },
+            user : { select: { id: true , userName : true , email : true , phoneNumber : true }, },
             storeName : true,
             verified: true,
             id: true
@@ -45,6 +45,36 @@ export async function unverifySeller(userId) {
         data: { verified: false },
     })
 }
+
+export async function addcategory(body) {
+    const exist = await prisma.productCategory.findUnique({
+        where: {categoryName : body.categoryName}
+    })
+    if (exist) {
+        throw createError(400, 'categoryName already exists');
+    }
+    return await prisma.productCategory.create({
+        data: { categoryName : body.categoryName },
+    })
+}
+
+export async function detectRepeatedProduct(){
+    const repeatedProduct = await prisma.product.findMany({
+        where : {
+            
+        }
+    })
+}
+
+export async function updateorderStatus(orderId, status) {
+    const order = await prisma.order.update({
+        where: { id: orderId },
+        data: { orderStatus: status }
+    })
+    if (!order) throw createError(404, "order not found");
+    return order;
+}
+
 // async function makeAdmin(userId) {
 //     const user = await prisma.admin.create({
 //         data: {userId : userId}

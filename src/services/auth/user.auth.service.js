@@ -36,10 +36,13 @@ export async function signUp(json) {
                 email: json.email,
             }
         });
-        await tx.client.create({
-            data : {
+        const client = await tx.client.create({
+            data: {
                 userId: newUser.id,
             }
+        })
+        await tx.shoppingCart.create({
+            data : {clientId: client.id},
         })
         return newUser;
     })
@@ -70,3 +73,9 @@ export async function changeUserInfo(userId, json) {
     return prisma.user.update({where: {id: userId}, data});
 }
 
+export async function markOtpVerified(userId) {
+    return prisma.user.update({ where: { id: userId }, data: { otpVerified: true } });
+}
+export async function unverifyUser(userId) {
+    return prisma.user.update({ where: { id: userId }, data: { otpVerified: false } });
+}

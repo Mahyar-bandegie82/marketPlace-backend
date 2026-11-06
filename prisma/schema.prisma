@@ -20,7 +20,6 @@ enum Condition {
 }
 
 enum OrderStatus {
-  PENDING_PAYMENT
   PROCESSING
   SHIPPED
   DELIVERED
@@ -30,15 +29,15 @@ enum OrderStatus {
 }
 
 model User {
-  id           Int     @id @default(autoincrement())
-  userName     String
-  password     String
-  phoneNumber  String  @unique
-  email        String  @unique
-  refreshToken Json[]
-  seller       Seller?
-  client       Client?
-  admin        Admin?
+  id          Int     @id @default(autoincrement())
+  userName    String
+  password    String
+  phoneNumber String  @unique
+  email       String  @unique
+  otpVerified Boolean @default(false)
+  seller      Seller?
+  client      Client?
+  admin       Admin?
 }
 
 model Admin {
@@ -68,6 +67,7 @@ model Seller {
   userId    Int               @unique
   user      User              @relation(fields: [userId], references: [id])
   listings  SellerInventory[]
+  promotion Promotions[]
   verified  Boolean           @default(false)
 }
 
@@ -82,6 +82,7 @@ model SellerInventory {
   id                 Int                @id @default(autoincrement())
   quantity           Int
   price              Int
+  discountedPrice    Int                @default(0)
   condition          Condition          @default(NEW)
   isActive           Boolean            @default(true)
   sellerId           Int
@@ -91,7 +92,6 @@ model SellerInventory {
   product            Product            @relation(fields: [productId], references: [id])
   cartItems          CartItem[]
   orderItems         OrderItems[]
-  comments           Comment[]
   promotionsProducts PromotionListing[]
 
   @@unique([sellerId, productId, condition])
@@ -103,12 +103,17 @@ model Product {
   productName       String
   description       String
   rating            Float?              @default(0)
+  model             String
+  brand             String
   attributes        Json                @default("{}")
   images            Json                @default("[]")
   videos            Json                @default("[]")
   categories        ProductCategory[]
   listings          SellerInventory[]
   favouriteProducts FavouriteProducts[]
+  comments          Comment[]
+
+  @@unique([model, brand])
 }
 
 model ProductCategory {
@@ -142,47 +147,47 @@ model FavouriteProducts {
 model Order {
   id          Int          @id @default(autoincrement())
   orderDate   DateTime     @default(now())
-  orderStatus OrderStatus  @default(PENDING_PAYMENT)
-  paidAt      DateTime?
+  orderStatus OrderStatus  @default(PROCESSING)
+  paidAt      DateTime     @default(now())
   deliveredAt DateTime?
   orderItems  OrderItems[]
   client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId    Int
   address     String
-  postalCode  Int
+  postalCode  String
 
   @@index([clientId])
 }
 
 model OrderItems {
-  id              Int             @id @default(autoincrement())
-  unitPrice       Int
-  quantity        Int
-  discountPercent Int             @default(0)
-  orderId         Int
-  listingId       Int
-  listing         SellerInventory @relation(fields: [listingId], references: [id])
-  order           Order           @relation(fields: [orderId], references: [id])
+  id        Int             @id @default(autoincrement())
+  unitPrice Int
+  quantity  Int
+  // discountPercent Int             @default(0)
+  orderId   Int
+  listingId Int
+  listing   SellerInventory @relation(fields: [listingId], references: [id])
+  order     Order           @relation(fields: [orderId], references: [id])
 
   @@unique([orderId, listingId])
   @@index([listingId])
 }
 
 model Comment {
-  id        Int             @id @default(autoincrement())
-  like      Int             @default(0)
+  id        Int      @id @default(autoincrement())
+  like      Int      @default(0)
   rating    Float
-  dislike   Int             @default(0)
+  dislike   Int      @default(0)
   massage   String
-  createdAt DateTime        @default(now())
-  images    Json            @default("[]")
-  videos    Json            @default("[]")
-  listingId Int
-  listing   SellerInventory @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  client    Client          @relation(fields: [clientId], references: [id])
+  createdAt DateTime @default(now())
+  images    Json     @default("[]")
+  videos    Json     @default("[]")
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  client    Client   @relation(fields: [clientId], references: [id])
   clientId  Int
 
-  @@unique([listingId, clientId])
+  @@unique([productId, clientId])
   @@index([clientId])
 }
 
@@ -192,6 +197,8 @@ model Promotions {
   startDate          DateTime           @default(now())
   endDate            DateTime
   promotionsProducts PromotionListing[]
+  seller             Seller             @relation(fields: [sellerId], references: [id])
+  sellerId           Int
 }
 
 model PromotionListing {

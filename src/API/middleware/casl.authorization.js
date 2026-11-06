@@ -21,7 +21,7 @@ export async function attachAbility(req, res, next) {
             seller: { select: { id: true, verified: true } },
         },
     });
-    console.log(user);
+    // console.log(user);
     if (!user) next(createError(401, 'User not found')) ;
 
     req.user = user;
