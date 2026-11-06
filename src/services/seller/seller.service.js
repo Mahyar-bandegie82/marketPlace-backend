@@ -273,7 +273,7 @@ export async function deletePromotion(userId, promotionId) {
     const seller = await getSellerIdWithUserId(userId)
     return await prisma.$transaction(async (tx) => {
         const promotion = await tx.promotions.findFirst({
-            where: { id: promotionId, sellerId },
+            where: { id: promotionId, sellerId : seller },
             select: { id: true },
         })
         if (!promotion) throw createError(404, "promotion not found")

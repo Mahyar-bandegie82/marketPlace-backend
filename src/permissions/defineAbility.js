@@ -39,7 +39,7 @@ export function defineAbilityFor(user) {
         can('create', 'Comment', { clientId: client.id });
         can('update', 'Comment', ['massage', 'images', 'videos'], { clientId: client.id });
         can('delete', 'Comment', { clientId: client.id });
-        can('react', 'Comment');   
+        can('react', 'Comment');
 
         can('create', 'Seller')
 
@@ -50,7 +50,7 @@ export function defineAbilityFor(user) {
             orderStatus: { in: ['PROCESSING'] },
         });
         can('read', 'OrderItems', { order: { clientId: client.id } });
-        can('create', 'OrderItems');  
+        can('create', 'OrderItems');
     }
 
     if (seller) {
@@ -62,6 +62,13 @@ export function defineAbilityFor(user) {
             can('delete', 'SellerInventory', { sellerId: seller.id });
             can('read', 'SellerInventory', { sellerId: seller.id });
             can('update', 'SellerInventory', ['quantity', 'price', 'condition', 'isActive', 'productWaranty'], { sellerId: seller.id });
+            can('create', 'Promotions', { sellerId: seller.id })
+            can('read', 'Promotions', { sellerId: seller.id })
+            can('delete', 'Promotions', { sellerId: seller.id })
+            can('create', 'PromotionListing', { sellerId: seller.id })
+            can('delete', 'PromotionListing', { sellerId: seller.id })
+            can('update', 'PromotionListing', { sellerId: seller.id })
+            can('read', 'PromotionListing', { sellerId: seller.id })
         }
 
 

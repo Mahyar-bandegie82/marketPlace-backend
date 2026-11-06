@@ -109,26 +109,26 @@ router.get('/getPromotions', authorize('read', 'Promotions'), async (req, res) =
     return res.status(200).json({promotions});
 });
 
-router.get('/getPromotionListings/:promotionId', authorize('read', 'Promotions'), async (req, res) => {
+router.get('/getPromotionListings/:promotionId', authorize('read', 'PromotionListing'), async (req, res) => {
     const {promotionId} = await joiValidator(PromotionIdSchema, req.params);
     const promotion = await getPromotionListing(req.id, promotionId);
     return res.status(200).json({promotion});
 });
 
-router.post('/addListingToPromotion', authorize('create', 'Promotions'), async (req, res) => {
+router.post('/addListingToPromotion', authorize('create', 'PromotionListing'), async (req, res) => {
     const body = await joiValidator(addListingToPromotionSchema, req.body);
     const item = await addListingToPromotion(body, req.id);
     return res.status(201).json({message: "listing added to promotion", item});
 });
 
-router.patch('/updatePromotionDiscount/:promotionId/:listingId', authorize('update', 'Promotions'), async (req, res) => {
+router.patch('/updatePromotionDiscount/:promotionId/:listingId', authorize('update', 'PromotionListing'), async (req, res) => {
     const params = await joiValidator(promotionListingParamsSchema, req.params);
     const {discount} = await joiValidator(updatePromotionDiscountSchema, req.body);
     const result = await updatePromotionListing(req.id, {...params, discount});
     return res.status(200).json({message: "discount updated", result});
 });
 
-router.delete('/deleteListingFromPromotion/:promotionId/:listingId', authorize('delete', 'Promotions'), async (req, res) => {
+router.delete('/deleteListingFromPromotion/:promotionId/:listingId', authorize('delete', 'PromotionListing'), async (req, res) => {
     const {promotionId, listingId} = await joiValidator(promotionListingParamsSchema, req.params);
     const result = await deleteListingfromPromotion(req.id, promotionId, listingId);
     return res.status(200).json({message: "listing removed from promotion", result});
