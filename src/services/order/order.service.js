@@ -1,6 +1,7 @@
 import { prismaPool } from "../../helper/helper.js"
 import createError from "http-errors"
 import { clearCart, getCartItems } from "../user/user.service.js"
+import { use } from "react";
 
 const prisma = prismaPool
 
@@ -63,6 +64,17 @@ export async function createOrder(userId, { address, postalCode }) {
             include: { orderItems: true },
         });
 
+        const totalAmount = order.orderItems.reduce(
+            (sum, item) => sum + item.unitPrice * item.quantity,
+            0
+        );
+
+        await tx.client.update({
+            where: { id: userId },
+            data: {
+                amountSpent: { increment: totalAmount }
+            }
+        })
         await tx.cartItem.deleteMany({ where: { shoppingCartId: cart.id } });
 
         return order;
@@ -87,8 +99,17 @@ export async function cancelOrder(userId, orderId) {
 
         const items = await tx.orderItems.findMany({
             where: { orderId },
-            select: { listingId: true, quantity: true },
+            select: { listingId: true, quantity: true, unitPrice: true },
         });
+        const totalOrderPrice = items.reduce((sum, item) => {
+            return sum + item.quantity * item.unitPrice;
+        }, 0);
+        await tx.client.update({
+            where: { userId },
+            data: {
+                amountSpent: { decrement: totalOrderPrice }
+            }
+        })
         for (const item of items) {
             await tx.sellerInventory.update({
                 where: { id: item.listingId },
@@ -100,11 +121,11 @@ export async function cancelOrder(userId, orderId) {
     });
 }
 
-export async function updateProcessingOrder(userId, orderId, {address, postalCode}) {
-    const orderUpdated =  prisma.order.update({
-        where: {id: orderId, orderStatus: 'PROCESSING', client: {userId}},
-        data: {address, postalCode},
-        select: {id: true, orderStatus: true, address: true, postalCode: true},
+export async function updateProcessingOrder(userId, orderId, { address, postalCode }) {
+    const orderUpdated = prisma.order.update({
+        where: { id: orderId, orderStatus: 'PROCESSING', client: { userId } },
+        data: { address, postalCode },
+        select: { id: true, orderStatus: true, address: true, postalCode: true },
     });
     if (!orderUpdated) throw createError(404, "order not found or not in PROCESSING status");
     return orderUpdated;

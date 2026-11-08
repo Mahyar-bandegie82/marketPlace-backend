@@ -35,6 +35,7 @@ model User {
   phoneNumber String  @unique
   email       String  @unique
   otpVerified Boolean @default(false)
+  dateCreated DateTime @default(now())
   seller      Seller?
   client      Client?
   admin       Admin?
