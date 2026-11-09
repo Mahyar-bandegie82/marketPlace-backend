@@ -1,20 +1,19 @@
-
 import createError from "http-errors";
-import {prismaPool} from "../../helper/helper.js";
+import { prismaPool } from "../../helper/helper.js";
 
 const prisma = prismaPool
 
 export async function seeSellerRequests() {
     let sellers = await prisma.seller.findMany({
-        where: {verified: false},
+        where: { verified: false },
         select: {
-            user : { select: { id: true , userName : true , email : true , phoneNumber : true }, },
-            storeName : true,
+            user: { select: { id: true, userName: true, email: true, phoneNumber: true }, },
+            storeName: true,
             verified: true,
             id: true
         }
     })
-    if (sellers.length === 0) {sellers = "there are no unverified sellers"}
+    if (sellers.length === 0) { sellers = "there are no unverified sellers" }
     return sellers
 }
 
@@ -48,20 +47,20 @@ export async function unverifySeller(userId) {
 
 export async function addcategory(body) {
     const exist = await prisma.productCategory.findUnique({
-        where: {categoryName : body.categoryName}
+        where: { categoryName: body.categoryName }
     })
     if (exist) {
         throw createError(400, 'categoryName already exists');
     }
     return await prisma.productCategory.create({
-        data: { categoryName : body.categoryName },
+        data: { categoryName: body.categoryName },
     })
 }
 
-export async function detectRepeatedProduct(){
+export async function detectRepeatedProduct() {
     const repeatedProduct = await prisma.product.findMany({
-        where : {
-            
+        where: {
+
         }
     })
 }
@@ -75,12 +74,52 @@ export async function updateorderStatus(orderId, status) {
     return order;
 }
 
-// async function makeAdmin(userId) {
-//     const user = await prisma.admin.create({
-//         data: {userId : userId}
-//     })
-//     if (!user) {throw createError(400, 'somthing went wrong.');}
-//     return user;
-// }
-//
-// await makeAdmin(2)
+export async function getNonOtpVerifiedUsers() {
+    const users = await prisma.user.findMany({
+        where: { otpVerified: false },
+        select: {
+            userName: true, phoneNumber: true, email: true,
+            otpVerified: true, dateCreated: true
+        }
+    })
+    if (users.length <= 0) throw createError(400, "there is no non otp verified users");
+
+    return users
+}
+
+export async function delete30DaysOldNonOtpVerifiedUsers() {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+
+    const { count } = await prisma.user.deleteMany({
+        where: {
+            otpVerified: false,
+            dateCreated: { lt: thirtyDaysAgo },
+            admin: null, client: null, seller: null
+        }
+    });
+
+    return { deletedCount: count, message: `successfully deleted ${count} users` }
+}
+
+export async function getLoyalCustomers() {
+    const clients = await prisma.client.findMany({
+        where: { loyalCustomer: true },
+        select: {
+            id: true,
+            amountSpent: true,
+            user: {
+                select: { userName: true, phoneNumber: true, email: true }
+            }
+        },
+        orderBy: { amountSpent: 'desc' }
+    })
+    const loyals = clients.map(({ id, amountSpent, user }) => ({
+        clientId: id,
+        amountSpent,
+        ...user
+    }))
+    return {
+        massage: `you hav e${loyals.length} loyal customers`,
+        loyals
+    }
+}
