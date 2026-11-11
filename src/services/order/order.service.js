@@ -1,7 +1,6 @@
 import { prismaPool } from "../../helper/helper.js"
 import createError from "http-errors"
-import { clearCart, getCartItems } from "../user/user.service.js"
-import { use } from "react";
+
 
 const prisma = prismaPool
 

@@ -1,0 +1,439 @@
+paths:
+  /api/V1/users/addAddres:
+    put:
+      tags: [User Addresses]
+      summary: Add a new address
+      description: Registers a new address (street line and postal code) for the authenticated client. Requires the `create` permission on `Client`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [addressLine, postalCode]
+              properties:
+                addressLine:
+                  type: string
+                  minLength: 10
+                  maxLength: 80
+                  example: "12 Valiasr Street, Apt 4"
+                postalCode:
+                  type: string
+                  example: "1234567890"
+      responses:
+        '201':
+          description: Address added successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "success"
+                  address:
+                    $ref: '#/components/schemas/Address'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/readAddress:
+    get:
+      tags: [User Addresses]
+      summary: Get all saved addresses
+      description: Returns every address and postal code saved by the authenticated client. Requires the `read` permission on `Client`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Addresses retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "success"
+                  address:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Address'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/deleteAddress:
+    delete:
+      tags: [User Addresses]
+      summary: Delete a saved address
+      description: Deletes the address matching the given address line and postal code from the authenticated client's saved addresses. Requires the `delete` permission on `Client`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [addressLine, postalCode]
+              properties:
+                addressLine:
+                  type: string
+                  minLength: 10
+                  maxLength: 50
+                  example: "12 Valiasr Street, Apt 4"
+                postalCode:
+                  type: string
+                  example: "1234567890"
+      responses:
+        '200':
+          description: Address deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "deleted address"
+                  updatedAddress:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Address'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/editAddress:
+    put:
+      tags: [User Addresses]
+      summary: Edit a saved address
+      description: Finds an existing address using the `address` object and applies the fields given in `changes`. At least one field must be present in `changes`. Requires the `update` permission on `Client`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [changes]
+              properties:
+                address:
+                  description: The existing address to be edited.
+                  $ref: '#/components/schemas/Address'
+                changes:
+                  type: object
+                  minProperties: 1
+                  description: Fields to overwrite on the existing address.
+                  properties:
+                    addressLine:
+                      type: string
+                      example: "99 New Street, Block B"
+                    postalCode:
+                      type: string
+                      example: "9876543210"
+      responses:
+        '200':
+          description: Address edited successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "edited address successfully"
+                  updatedAddress:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Address'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/readFavoritedItems:
+    get:
+      tags: [Favourites]
+      summary: Get favourited products
+      description: Returns all products the authenticated client has added to their favourites. Requires the `read` permission on `FavouriteProducts`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Favourites retrieved successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  favourites:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/addFavoritedItems/{productId}:
+    post:
+      tags: [Favourites]
+      summary: Add a product to favourites
+      description: Adds the product with the given ID to the authenticated client's favourites. Requires the `create` permission on `FavouriteProducts`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '201':
+          description: Product added to favourites.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Added to favourites"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/deletefavoritedItem/{productId}:
+    delete:
+      tags: [Favourites]
+      summary: Remove a product from favourites
+      description: Removes the product with the given ID from the authenticated client's favourites. Requires the `delete` permission on `FavouriteProducts`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Product removed from favourites.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Removed from favourites"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/clearfavoritedItems:
+    delete:
+      tags: [Favourites]
+      summary: Clear all favourites
+      description: Removes every product from the authenticated client's favourites. Requires the `delete` permission on `FavouriteProducts`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Favourites cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Favourites cleared"
+                  removed:
+                    type: object
+                    description: Result of the removal (for example the number of deleted entries).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/addCartItem:
+    post:
+      tags: [Shopping Cart]
+      summary: Add a listing to the cart
+      description: Adds the given listing to the authenticated user's shopping cart. The cart is resolved automatically from the user's ID. Requires the `manage` permission on `CartItem`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/CartItemBody'
+      responses:
+        '201':
+          description: Item added to the cart.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Item added to cart"
+                  cartItem:
+                    $ref: '#/components/schemas/CartItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/deleteCartItem:
+    delete:
+      tags: [Shopping Cart]
+      summary: Remove a listing from the cart
+      description: Removes the given listing from the authenticated user's shopping cart entirely, regardless of its quantity. Requires the `manage` permission on `CartItem`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/CartItemBody'
+      responses:
+        '200':
+          description: Item removed from the cart.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Item removed from cart"
+                  cartItem:
+                    $ref: '#/components/schemas/CartItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/incrementCartItemquantity:
+    put:
+      tags: [Shopping Cart]
+      summary: Increase a cart item's quantity
+      description: Increases the quantity of the given listing in the authenticated user's cart by one. Requires the `manage` permission on `CartItem`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/CartItemBody'
+      responses:
+        '201':
+          description: Item quantity incremented.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Item quantity incremented"
+                  cartItem:
+                    $ref: '#/components/schemas/CartItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/decrementCartItemquantity:
+    put:
+      tags: [Shopping Cart]
+      summary: Decrease a cart item's quantity
+      description: Decreases the quantity of the given listing in the authenticated user's cart by one. Requires the `manage` permission on `CartItem`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/CartItemBody'
+      responses:
+        '201':
+          description: Item quantity decremented.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Item quantity decremented"
+                  cartItem:
+                    $ref: '#/components/schemas/CartItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/clearCartItems:
+    delete:
+      tags: [Shopping Cart]
+      summary: Empty the cart
+      description: Removes every item from the authenticated user's shopping cart. Requires the `manage` permission on `CartItem`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cart cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Cart cleared"
+                  removed:
+                    type: object
+                    description: Result of the removal (for example the number of deleted items).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/users/getCartItems:
+    get:
+      tags: [Shopping Cart]
+      summary: Get all cart items
+      description: Returns every item currently in the authenticated user's shopping cart. Requires the `manage` permission on `CartItem`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cart items retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Cart items retrieved"
+                  cartItems:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CartItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'

@@ -1,0 +1,534 @@
+paths:
+  /api/V1/seller/sellerSignUp:
+    post:
+      tags: [Seller - Account]
+      summary: Request to become a seller
+      description: Submits a seller signup request for the authenticated user. The request waits in the pending list until an admin verifies it. Requires the `create` permission on `Seller`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userName, password, email, storeName]
+              properties:
+                userName:
+                  type: string
+                  minLength: 4
+                  maxLength: 20
+                  pattern: '^[A-Za-z0-9_.-]{3,30}$'
+                  example: "john_store"
+                password:
+                  $ref: '#/components/schemas/NewPassword'
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                  example: "store@example.com"
+                storeName:
+                  type: string
+                  example: "John's Electronics"
+      responses:
+        '201':
+          description: Request posted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "your request was posted successfully"
+                  seller:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/addListing:
+    post:
+      tags: [Seller - Inventory]
+      summary: Add a product to your inventory
+      description: Creates a listing in the seller's inventory. Send either `productId` (an existing product) or `product` (a new product, created together with the listing in one transaction), never both. A seller cannot list the same product twice with the same condition. Requires the `create` permission on `SellerInventory`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity, price]
+              oneOf:
+                - required: [productId]
+                - required: [product]
+              properties:
+                productId:
+                  type: integer
+                  minimum: 1
+                  description: ID of an existing product. Use this or `product`.
+                  example: 42
+                product:
+                  type: object
+                  description: A new product to create. Use this or `productId`.
+                  required: [productName, model, brand, description, categories]
+                  properties:
+                    productName:
+                      type: string
+                      minLength: 2
+                      example: "iphone 15"
+                    model:
+                      type: string
+                      maxLength: 30
+                      example: "a3090"
+                    brand:
+                      type: string
+                      maxLength: 20
+                      example: "apple"
+                    description:
+                      type: string
+                      example: "128GB, black"
+                    categories:
+                      type: array
+                      minItems: 1
+                      items:
+                        type: string
+                      example: ["Phones"]
+                    attributes:
+                      type: object
+                      description: Free-form product attributes.
+                      example: { "color": "black", "storage": "128GB" }
+                    images:
+                      type: array
+                      items:
+                        type: string
+                        format: uri
+                    videos:
+                      type: array
+                      items:
+                        type: string
+                        format: uri
+                quantity:
+                  type: integer
+                  minimum: 0
+                  example: 10
+                price:
+                  type: integer
+                  minimum: 1
+                  example: 35000000
+                condition:
+                  type: string
+                  enum: [NEW, USED, BARELY_USED]
+                  default: NEW
+                productWaranty:
+                  type: object
+                  description: Optional warranty. The field is spelled `productWaranty` in the API.
+                  required: [corp, time]
+                  properties:
+                    corp:
+                      type: string
+                      maxLength: 30
+                      example: "Asa Service"
+                    time:
+                      type: string
+                      format: date
+                      example: "2027-11-12"
+      responses:
+        '201':
+          description: Product added to the inventory.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    $ref: '#/components/schemas/Listing'
+                  message:
+                    type: string
+                    example: "Product added to inventory"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/deleteListing/{listingId}:
+    delete:
+      tags: [Seller - Inventory]
+      summary: Remove a listing
+      description: Removes the given listing from the seller's inventory. The product itself is not deleted. Requires the `delete` permission on `SellerInventory`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      responses:
+        '200':
+          description: Listing removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Listing removed"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/updateListing/{listingId}:
+    put:
+      tags: [Seller - Inventory]
+      summary: Update a listing
+      description: Updates the quantity, price or condition of one of the seller's listings. Requires the `update` permission on `SellerInventory`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 0
+                  example: 5
+                price:
+                  type: number
+                  minimum: 1
+                  example: 34000000
+                condition:
+                  type: string
+                  enum: [NEW, USED, BARELY_USED]
+      responses:
+        '200':
+          description: Listing updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Updated successfully"
+                  updatedListing:
+                    $ref: '#/components/schemas/Listing'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/getAllSellerInventory:
+    get:
+      tags: [Seller - Inventory]
+      summary: Get your whole inventory
+      description: Returns every listing in the authenticated seller's inventory. Requires the `read` permission on `SellerInventory`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Listings retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Listing'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/getSellerInventory/{listingId}:
+    get:
+      tags: [Seller - Inventory]
+      summary: Get one listing
+      description: Returns a single listing from the authenticated seller's inventory. Requires the `read` permission on `SellerInventory`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ListingId'
+      responses:
+        '200':
+          description: Listing retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listing:
+                    $ref: '#/components/schemas/Listing'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/createPromotion:
+    post:
+      tags: [Seller - Promotions]
+      summary: Create a promotion
+      description: Starts a new promotion for the seller. A seller can have at most 5 promotions, and expired ones are deleted when a new one starts. `startDate` defaults to now, and `endDate` must be after it. Requires the `create` permission on `Promotions`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, endDate]
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 50
+                  example: "Winter Sale"
+                startDate:
+                  type: string
+                  format: date-time
+                  description: Defaults to the current time.
+                  example: "2026-11-12T00:00:00Z"
+                endDate:
+                  type: string
+                  format: date-time
+                  example: "2026-12-12T00:00:00Z"
+      responses:
+        '201':
+          description: Promotion created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "promotion created"
+                  promotion:
+                    $ref: '#/components/schemas/Promotion'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/getPromotions:
+    get:
+      tags: [Seller - Promotions]
+      summary: Get your promotions
+      description: Returns the authenticated seller's promotions. Requires the `read` permission on `Promotions`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Promotions retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  promotions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Promotion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/getPromotionListings/{promotionId}:
+    get:
+      tags: [Seller - Promotions]
+      summary: Get the listings of a promotion
+      description: Returns the given promotion together with the listings that are part of it and their discounts. Requires the `read` permission on `PromotionListing`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PromotionId'
+      responses:
+        '200':
+          description: Promotion listings retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  promotion:
+                    $ref: '#/components/schemas/Promotion'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/addListingToPromotion:
+    post:
+      tags: [Seller - Promotions]
+      summary: Add a listing to a promotion
+      description: Adds one of the seller's listings to one of the seller's promotions with the given discount percentage. Requires the `create` permission on `PromotionListing`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [promotionId, listingId, discount]
+              properties:
+                promotionId:
+                  type: integer
+                  minimum: 1
+                  example: 3
+                listingId:
+                  type: integer
+                  minimum: 1
+                  example: 7
+                discount:
+                  type: integer
+                  minimum: 1
+                  maximum: 99
+                  description: Discount percentage.
+                  example: 15
+      responses:
+        '201':
+          description: Listing added to the promotion.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "listing added to promotion"
+                  item:
+                    $ref: '#/components/schemas/PromotionListing'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/updatePromotionDiscount/{promotionId}/{listingId}:
+    patch:
+      tags: [Seller - Promotions]
+      summary: Change the discount of a promoted listing
+      description: Updates the discount percentage of the given listing inside the given promotion. Requires the `update` permission on `PromotionListing`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PromotionId'
+        - $ref: '#/components/parameters/ListingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [discount]
+              properties:
+                discount:
+                  type: integer
+                  minimum: 1
+                  maximum: 99
+                  example: 20
+      responses:
+        '200':
+          description: Discount updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "discount updated"
+                  result:
+                    $ref: '#/components/schemas/PromotionListing'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/deleteListingFromPromotion/{promotionId}/{listingId}:
+    delete:
+      tags: [Seller - Promotions]
+      summary: Remove a listing from a promotion
+      description: Removes the given listing from the given promotion. The listing itself stays in the inventory. Requires the `delete` permission on `PromotionListing`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PromotionId'
+        - $ref: '#/components/parameters/ListingId'
+      responses:
+        '200':
+          description: Listing removed from the promotion.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "listing removed from promotion"
+                  result:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/seller/deletePromotion/{promotionId}:
+    delete:
+      tags: [Seller - Promotions]
+      summary: Delete a promotion
+      description: Deletes the given promotion. Requires the `delete` permission on `Promotions`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PromotionId'
+      responses:
+        '200':
+          description: Promotion deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "promotion deleted"
+                  result:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'

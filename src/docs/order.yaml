@@ -1,0 +1,126 @@
+paths:
+  /api/V1/orders/createOrder:
+    post:
+      tags: [Orders]
+      summary: Place an order from the cart
+      description: Checks out the authenticated user's shopping cart. Stock is checked and reduced, the order and its items are created, and the cart is cleared, all in one transaction. If any item is out of stock, nothing is changed. Requires the `create` permission on `Order`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [address, postalCode]
+              properties:
+                address:
+                  type: string
+                  minLength: 5
+                  maxLength: 200
+                  example: "12 Valiasr Street, Apt 4"
+                postalCode:
+                  type: string
+                  example: "1234567890"
+      responses:
+        '201':
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/orders/cancelOrder/{orderId}:
+    put:
+      tags: [Orders]
+      summary: Cancel an order
+      description: Cancels the given order of the authenticated user. Only possible while the order status is `PROCESSING`. Requires the `update` permission on `Order`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200':
+          description: Order canceled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/orders/updateOrderAddress/{orderId}:
+    patch:
+      tags: [Orders]
+      summary: Change the delivery address of an order
+      description: Updates the address and/or postal code of the given order. At least one field must be sent. Only possible while the order is still `PROCESSING` and not yet paid. Requires the `update` permission on `Order`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                address:
+                  type: string
+                  minLength: 5
+                  maxLength: 200
+                  example: "99 New Street, Block B"
+                postalCode:
+                  type: string
+                  example: "9876543210"
+      responses:
+        '200':
+          description: Order updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/orders/getOrders:
+    get:
+      tags: [Orders]
+      summary: Get your active orders
+      description: Returns the authenticated user's active orders (status `PROCESSING` or `SHIPPED`). Requires the `read` permission on `Order`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Orders fetched.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  message:
+                    type: string
+                    example: "orders fetched successfully"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'

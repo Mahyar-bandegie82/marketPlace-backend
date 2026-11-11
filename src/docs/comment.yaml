@@ -1,0 +1,176 @@
+paths:
+  /api/V1/comments/createComment:
+    post:
+      tags: [Comments]
+      summary: Add a review to a product
+      description: Creates a review (rating, text and optional media links) on the given product for the authenticated client. Requires the `create` permission on `Comment`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, rating, massage]
+              properties:
+                productId:
+                  type: integer
+                  minimum: 1
+                  example: 42
+                rating:
+                  type: number
+                  minimum: 1
+                  maximum: 100
+                  example: 85
+                massage:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+                  description: The review text. The field is spelled `massage` in the API.
+                  example: "Great phone, the battery lasts two days."
+                images:
+                  type: array
+                  description: Links to images attached to the review.
+                  items:
+                    type: string
+                    format: uri
+                  example: ["https://example.com/photo1.jpg"]
+                videos:
+                  type: array
+                  description: Links to videos attached to the review.
+                  items:
+                    type: string
+                    format: uri
+                  example: []
+      responses:
+        '201':
+          description: Comment added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "comment added"
+                  comment:
+                    $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/comments/updateComment/{productId}:
+    patch:
+      tags: [Comments]
+      summary: Update your review of a product
+      description: Updates the authenticated client's review on the given product. At least one of `rating`, `massage`, `images` or `videos` must be sent. Requires the `update` permission on `Comment`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                rating:
+                  type: number
+                  minimum: 1
+                  maximum: 100
+                  example: 90
+                massage:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+                  example: "Updated: still great after a month."
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+                videos:
+                  type: array
+                  items:
+                    type: string
+                    format: uri
+      responses:
+        '200':
+          description: Comment updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "comment updated"
+                  comment:
+                    $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/comments/deleteComment/{productId}:
+    delete:
+      tags: [Comments]
+      summary: Delete your review of a product
+      description: Deletes the authenticated client's review on the given product. Requires the `delete` permission on `Comment`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Comment deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "comment deleted"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/comments/getComments:
+    get:
+      tags: [Comments]
+      summary: Get your reviews
+      description: Returns every review written by the authenticated client. Only users with a client profile can use it.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Comments retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The user has no client profile, so they have no reviews.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

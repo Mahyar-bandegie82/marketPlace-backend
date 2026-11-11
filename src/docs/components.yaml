@@ -1,0 +1,275 @@
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token returned by /auth/login or /auth/signup.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+      description: HttpOnly refresh-token cookie set by /auth/login or /auth/signup.
+
+  headers:
+    RefreshCookie:
+      description: HttpOnly, Secure, SameSite=Strict `refreshToken` cookie (7 days).
+      schema:
+        type: string
+
+  parameters:
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      description: ID of the product.
+      schema:
+        type: integer
+        minimum: 1
+        example: 42
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: ID of the order.
+      schema:
+        type: integer
+        minimum: 1
+        example: 101
+    ListingId:
+      name: listingId
+      in: path
+      required: true
+      description: ID of the seller's listing.
+      schema:
+        type: integer
+        minimum: 1
+        example: 7
+    PromotionId:
+      name: promotionId
+      in: path
+      required: true
+      description: ID of the promotion.
+      schema:
+        type: integer
+        minimum: 1
+        example: 3
+
+  requestBodies:
+    CartItemBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [listingId]
+            properties:
+              listingId:
+                type: integer
+                minimum: 1
+                example: 7
+    OtpBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [otp]
+            properties:
+              otp:
+                type: string
+                minLength: 6
+                maxLength: 6
+                example: "482913"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+    PhoneNumber:
+      type: string
+      pattern: '^09\d{9}$'
+      example: "09188851694"
+
+    NewPassword:
+      type: string
+      minLength: 9
+      maxLength: 72
+      description: 9-72 printable characters with at least 2 capital letters, 2 digits and 1 special character. No spaces.
+      example: "MyP@ss12Word"
+
+    User:
+      type: object
+      description: Sanitized user object. Adjust to match what `sanitizeUser` returns.
+      properties:
+        id:
+          type: integer
+        userName:
+          type: string
+        email:
+          type: string
+        phoneNumber:
+          type: string
+        otpVerified:
+          type: boolean
+
+    Address:
+      type: object
+      properties:
+        addressLine:
+          type: string
+          example: "12 Valiasr Street, Apt 4"
+        postalCode:
+          type: string
+          example: "1234567890"
+
+    CartItem:
+      type: object
+      description: An item in the shopping cart. Adjust to match your Prisma model.
+      properties:
+        listingId:
+          type: integer
+          example: 7
+        quantity:
+          type: integer
+          example: 2
+
+    Comment:
+      type: object
+      description: A product review. Adjust to match your Prisma model.
+      properties:
+        productId:
+          type: integer
+          example: 42
+        rating:
+          type: number
+          example: 85
+        massage:
+          type: string
+          example: "Great phone, the battery lasts two days."
+        images:
+          type: array
+          items:
+            type: string
+        videos:
+          type: array
+          items:
+            type: string
+
+    Order:
+      type: object
+      description: An order. Adjust to match what your order service returns.
+      properties:
+        id:
+          type: integer
+          example: 101
+        orderStatus:
+          type: string
+          enum: [PROCESSING, SHIPPED, DELIVERED, CANCELED, RETURNED, REFUNDED]
+          example: "PROCESSING"
+        address:
+          type: string
+          example: "12 Valiasr Street, Apt 4"
+        postalCode:
+          type: string
+          example: "1234567890"
+        totalAmount:
+          type: number
+          example: 1499.99
+        orderItems:
+          type: array
+          items:
+            type: object
+            properties:
+              productName:
+                type: string
+              images:
+                type: array
+                items:
+                  type: string
+              quantity:
+                type: integer
+
+    Listing:
+      type: object
+      description: A seller's inventory listing. Adjust to match your Prisma model.
+      properties:
+        id:
+          type: integer
+          example: 7
+        productId:
+          type: integer
+          example: 42
+        quantity:
+          type: integer
+          example: 10
+        price:
+          type: integer
+          example: 35000000
+        discountedPrice:
+          type: integer
+          nullable: true
+          example: 29750000
+        condition:
+          type: string
+          enum: [NEW, USED, BARELY_USED]
+
+    Promotion:
+      type: object
+      description: A seller promotion. Adjust to match your Prisma model.
+      properties:
+        id:
+          type: integer
+          example: 3
+        name:
+          type: string
+          example: "Winter Sale"
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+
+    PromotionListing:
+      type: object
+      description: A listing inside a promotion.
+      properties:
+        promotionId:
+          type: integer
+          example: 3
+        listingId:
+          type: integer
+          example: 7
+        discount:
+          type: integer
+          example: 15
+
+  responses:
+    ValidationError:
+      description: The request body or parameters failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid access token.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: The user lacks permission for this action.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: The account is already verified.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -1,0 +1,309 @@
+paths:
+  /api/V1/auth/signup:
+    post:
+      tags: [Authentication]
+      summary: Register a new account
+      description: Creates a new user, starts a new refresh-token family, and returns an access token. The refresh token is set as an HttpOnly cookie. The account still has to be verified with an OTP afterwards.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userName, password, phoneNumber, email]
+              properties:
+                userName:
+                  type: string
+                  minLength: 4
+                  maxLength: 20
+                  pattern: '^[A-Za-z0-9_.-]{3,30}$'
+                  description: Letters, numbers, '_', '.' or '-'.
+                  example: "john_doe"
+                password:
+                  $ref: '#/components/schemas/NewPassword'
+                phoneNumber:
+                  $ref: '#/components/schemas/PhoneNumber'
+                email:
+                  type: string
+                  format: email
+                  maxLength: 254
+                  example: "john@example.com"
+      responses:
+        '201':
+          description: Signed up successfully.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+                    example: "Signed up successfully"
+                  accessToken:
+                    type: string
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/V1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Log in
+      description: Verifies the credentials, starts a new refresh-token family, and returns an access token. The refresh token is set as an HttpOnly cookie.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userName, password, phoneNumber]
+              properties:
+                userName:
+                  type: string
+                  minLength: 4
+                  maxLength: 20
+                  example: "john_doe"
+                password:
+                  type: string
+                  maxLength: 72
+                  example: "MyP@ss12Word"
+                phoneNumber:
+                  $ref: '#/components/schemas/PhoneNumber'
+      responses:
+        '200':
+          description: Logged in successfully.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+                    example: "Logged in successfully"
+                  accessToken:
+                    type: string
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/V1/auth/refresh:
+    put:
+      tags: [Authentication]
+      summary: Refresh the access token
+      description: Reads the `refreshToken` cookie, rotates it (the old token is consumed and a new one is stored), and returns a new access token. If a token that was already used is presented again, the whole token family is revoked and the cookie is cleared.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: New access token issued.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/RefreshCookie'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        '401':
+          description: No token provided, or the token is invalid, expired or was already used.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/V1/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Log out
+      description: Clears the refresh cookie and revokes the whole refresh-token family of the current session.
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Logged out successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Logged out successfully"
+        '401':
+          description: No refresh token cookie was provided, or it is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/V1/auth/signup/reciveOtp:
+    get:
+      tags: [Account Verification]
+      summary: Send a signup verification OTP
+      description: Generates a one-time code and sends it to the authenticated user's email. Fails if the account is already verified.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OTP sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "otp was successfully sent to your email with the address of joh*****@example.com"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/V1/auth/signup/verify-otp:
+    post:
+      tags: [Account Verification]
+      summary: Verify the account with an OTP
+      description: Checks the signup OTP and marks the account as verified.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/OtpBody'
+      responses:
+        '200':
+          description: Account verified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "account verified successfully"
+                  value:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/V1/auth/credentialChange/reciveOtp:
+    get:
+      tags: [Account Verification]
+      summary: Send a credential-change OTP
+      description: Generates a one-time code for changing credentials (purpose `passwordChange`) and sends it to the authenticated user's email.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OTP sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "otp was successfully sent to your email with the address of joh*****@example.com"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/V1/auth/credentialChange/verify-otp:
+    post:
+      tags: [Account Verification]
+      summary: Verify the credential-change OTP
+      description: Checks the `passwordChange` OTP and marks the account as verified.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: '#/components/requestBodies/OtpBody'
+      responses:
+        '200':
+          description: OTP verified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "account verified successfully"
+                  value:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/V1/auth/editinfo:
+    put:
+      tags: [Account Settings]
+      summary: Edit account information
+      description: Updates the given fields in `changes`. Changing the email or password un-verifies the account, revokes every refresh token for the user, and clears the refresh cookie, so the user must log in again. Requires the `update` permission on `User`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneNumber, changes]
+              properties:
+                phoneNumber:
+                  $ref: '#/components/schemas/PhoneNumber'
+                changes:
+                  type: object
+                  minProperties: 1
+                  description: Fields to update. At least one is required.
+                  properties:
+                    userName:
+                      type: string
+                      minLength: 4
+                      maxLength: 20
+                      example: "new_name"
+                    phoneNumber:
+                      $ref: '#/components/schemas/PhoneNumber'
+                    password:
+                      $ref: '#/components/schemas/NewPassword'
+                    email:
+                      type: string
+                      format: email
+                      maxLength: 254
+                      example: "new@example.com"
+      responses:
+        '200':
+          description: Credentials updated. The message differs depending on whether the email or the password was changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "password updated, please log in again"
+                  newInfo:
+                    $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'

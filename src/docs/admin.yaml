@@ -1,0 +1,499 @@
+paths:
+  /api/V1/admin/sellerReq:
+    get:
+      tags: [Admin - Sellers]
+      summary: List seller requests
+      description: Returns the pending seller signup requests awaiting review. Requires the `read` permission on `Seller`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seller requests retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/verifySellers/{userId}:
+    patch:
+      tags: [Admin - Sellers]
+      summary: Verify a seller
+      description: Approves the seller request of the given user and marks the seller as verified. Requires the `verify` permission on `Seller`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the user who requested to become a seller.
+          schema:
+            type: integer
+            minimum: 1
+            example: 12
+      responses:
+        '200':
+          description: Seller verified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "seller verified successfully"
+                  seller:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/deleteSellers/{userId}:
+    delete:
+      tags: [Admin - Sellers]
+      summary: Delete a seller
+      description: Revokes and deletes the seller profile (or pending request) of the given user. Requires the `delete` permission on `Seller`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the user whose seller profile is removed.
+          schema:
+            type: integer
+            minimum: 1
+            example: 12
+      responses:
+        '200':
+          description: Seller deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "seller deleted successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/unverifySeller/{userId}:
+    put:
+      tags: [Admin - Sellers]
+      summary: Unverify a seller
+      description: Sets the given seller back to unverified without deleting the profile. Requires the `unverify` permission on `Seller`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: ID of the seller's user.
+          schema:
+            type: integer
+            minimum: 1
+            example: 12
+      responses:
+        '200':
+          description: Seller unverified.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "seller unverified successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/sellers/trusted:
+    get:
+      tags: [Admin - Sellers]
+      summary: List trusted sellers
+      description: Returns all sellers that qualify as trusted. Requires the `read` permission on `Seller`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Trusted sellers retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/addProductCategory:
+    post:
+      tags: [Admin - Catalog]
+      summary: Add a product category
+      description: Creates a new product category. Requires the `manage` permission on `ProductCategory`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categoryName]
+              properties:
+                categoryName:
+                  type: string
+                  example: "Laptops"
+      responses:
+        '200':
+          description: Category added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "ProductCategory added successfully"
+                  productCategory:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/updateOrderStatus/{orderId}:
+    patch:
+      tags: [Admin - Orders]
+      summary: Update an order's status
+      description: Changes the status of the given order. Requires the `update` permission on `Order`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: ID of the order.
+          schema:
+            type: integer
+            minimum: 1
+            example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [PROCESSING, SHIPPED, DELIVERED, CANCELED, RETURNED, REFUNDED]
+                  example: "SHIPPED"
+      responses:
+        '200':
+          description: Order status updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Order status updated successfully"
+                  order:
+                    type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/orders/{id}/status:
+    patch:
+      tags: [Admin - Orders]
+      summary: Change an order's status (with transition rules)
+      description: Changes the status of the given order, enforcing the allowed status transitions. Requires the `update` permission on `Order`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the order.
+          schema:
+            type: integer
+            minimum: 1
+            example: 101
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [PROCESSING, SHIPPED, DELIVERED, CANCELED, RETURNED, REFUNDED]
+                  example: "DELIVERED"
+      responses:
+        '200':
+          description: Order status changed.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/users/unverified:
+    get:
+      tags: [Admin - Users]
+      summary: List users who have not verified their OTP
+      description: Returns a paginated list of users whose account is not OTP-verified. Requires the `read` permission on `User`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number.
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+        - name: limit
+          in: query
+          description: Number of users per page.
+          schema:
+            type: integer
+            minimum: 1
+            example: 20
+      responses:
+        '200':
+          description: Unverified users retrieved.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/users/unverified/stale:
+    delete:
+      tags: [Admin - Users]
+      summary: Delete stale unverified users
+      description: Deletes every user who has stayed OTP-unverified for more than 30 days. Requires the `delete` permission on `User`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stale unverified users deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/clients/loyal:
+    get:
+      tags: [Admin - Analytics]
+      summary: List loyal customers
+      description: Returns the clients that qualify as loyal customers. Requires the `read` permission on `Client`.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Loyal customers retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/clients/high-spenders:
+    get:
+      tags: [Admin - Analytics]
+      summary: List high-spending clients
+      description: Returns the clients whose total spent amount is at least `minAmount`. Requires the `read` permission on `Client`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: minAmount
+          in: query
+          required: true
+          description: Minimum total amount a client must have spent.
+          schema:
+            type: number
+            minimum: 0
+            example: 1000
+      responses:
+        '200':
+          description: High spenders retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/V1/admin/analytics/brands/best-selling:
+    get:
+      tags: [Admin - Analytics]
+      summary: Best-selling brands
+      description: Returns the brands with the most sales, highest first.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of brands to return.
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+      responses:
+        '200':
+          description: Best-selling brands retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/V1/admin/analytics/brands/by-product-count:
+    get:
+      tags: [Admin - Analytics]
+      summary: Brands ranked by number of products
+      description: Returns the brands with the most products in the catalogue, highest first.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of brands to return.
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+      responses:
+        '200':
+          description: Brands retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/V1/admin/comments/most-liked:
+    get:
+      tags: [Admin - Analytics]
+      summary: Most liked comments
+      description: Returns the most liked comments across all products.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of comments to return.
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+      responses:
+        '200':
+          description: Most liked comments retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/V1/admin/products/{productId}/comments/most-liked:
+    get:
+      tags: [Admin - Analytics]
+      summary: Most liked comments for a product
+      description: Returns the most liked comments on the given product.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+        - name: limit
+          in: query
+          description: Maximum number of comments to return.
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+      responses:
+        '200':
+          description: Most liked comments retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'

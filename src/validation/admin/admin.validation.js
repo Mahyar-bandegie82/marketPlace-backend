@@ -22,3 +22,24 @@ export const addProductCategory = Joi.object({
 export const updateOrderStatusSchema = Joi.object({
     status: Joi.string().valid('PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELED', 'RETURNED', 'REFUNDED').required(),
 });
+
+export const paginationQuerySchema = Joi.object({
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(20),
+});
+
+export const highSpenderQuerySchema = Joi.object({
+    minAmount: Joi.number().min(0).required(),
+});
+
+export const limitQuerySchema = Joi.object({
+    limit: Joi.number().integer().min(1).max(100).default(10),
+});
+
+export const idParamSchema = Joi.object({
+    id: Joi.number().integer().positive().required(),
+});
+
+export const productIdParamSchema = Joi.object({
+    productId: Joi.number().integer().positive().required(),
+});
