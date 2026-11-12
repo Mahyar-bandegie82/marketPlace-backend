@@ -1,4 +1,4 @@
-import { link } from "joi"
+
 
 export const user = [
     {
@@ -39,7 +39,18 @@ export const user = [
     { userName: "ghazalPanahi",    password: "!GhazaP3571",  phoneNumber: "09159012329", email: "ghazal.panahi@gmail.com",      otpVerified: false },
     { userName: "milaadTavakoli",  password: "$MilaaT9402",  phoneNumber: "09160123430", email: "milaad.tavakoli@outlook.com",  otpVerified: false }
 ]
-
+export const seller = [
+    { storeName: "pixel palace", userId: 1, trusted: true, verified: true },
+    { storeName: "novin electronic", userId: 2, trusted: false, verified: true },
+    { storeName: "digi bazaar", userId: 3, trusted: true, verified: true },
+    { storeName: "tech haven", userId: 4, trusted: false, verified: false },
+    { storeName: "gadget garden", userId: 5, trusted: true, verified: true },
+    { storeName: "silicon souk", userId: 6, trusted: false, verified: true },
+    { storeName: "byte market", userId: 7, trusted: false, verified: false },
+    { storeName: "circuit corner", userId: 8, trusted: true, verified: true },
+    { storeName: "electro mart", userId: 9, trusted: false, verified: true },
+    { storeName: "future gear", userId: 10, trusted: true, verified: true }
+]
 export const sellerInventory = [
     {
         quantity: 10,
@@ -390,7 +401,39 @@ export const order = [
     { clientId: 11, address: "bandar abbas imam khomeini street near the seaside park no 33",    postalCode: "7915846327" },
     { clientId: 26, address: "tehran jordan street third alley glass tower unit 18",             postalCode: "1914836275" }
 ]
-
+export const addressList = [
+    { address: "newyork hells kitchen daredevil house next to amtt murdock", postalCode: "666" },
+    { address: "tehran vanak mulla sadra street second alley no 12 unit 5", postalCode: "1991634521" },
+    { address: "isfahan chaharbagh abbasi street next to the old bookstore no 48", postalCode: "8143956210" },
+    { address: "shiraz zand street near the vakil bazaar blue door house", postalCode: "7134817652" },
+    { address: "tabriz valiasr square behind the red bridge cafe floor 3", postalCode: "5156913478" },
+    { address: "mashhad ahmadabad boulevard opposite the green park unit 9", postalCode: "9188746302" },
+    { address: "karaj gohardasht fourth street house with the white gate", postalCode: "3149856127" },
+    { address: "rasht golsar street next to the tea garden no 21", postalCode: "4165723890" },
+    { address: "tehran saadat abad kaj square second floor above the pharmacy", postalCode: "1998715634" },
+    { address: "ahvaz kianpars street 12 near the river walkway", postalCode: "6135817420" },
+    { address: "kerman azadi square behind the old citadel no 7", postalCode: "7618936254" },
+    { address: "qom ammar yaser boulevard near the library unit 14", postalCode: "3714936581" },
+    { address: "yazd amir chakhmaq street the house with the wind tower", postalCode: "8914758263" },
+    { address: "tehran punak sixth alley corner house number 3", postalCode: "1467953218" },
+    { address: "isfahan kharazi street five minutes from naqsh e jahan square", postalCode: "8173698452" },
+    { address: "shiraz eram boulevard next to the botanical garden unit 6", postalCode: "7193645827" },
+    { address: "tabriz elgoli road near the lake viewpoint villa 2", postalCode: "5157813649" },
+    { address: "mashhad vakilabad boulevard behind the book fair building b", postalCode: "9185631472" },
+    { address: "bandar abbas imam khomeini street near the seaside park no 33", postalCode: "7915846327" },
+    { address: "tehran jordan street third alley glass tower unit 18", postalCode: "1914836275" },
+    { address: "tehran niavaran north sarv street house number 9", postalCode: "1949753186" },
+    { address: "urmia shohada square near the old bazaar unit 4", postalCode: "5716834925" },
+    { address: "zanjan imam street behind the central mosque no 15", postalCode: "4513976280" },
+    { address: "hamedan bu ali boulevard next to the university gate floor 2", postalCode: "6518947352" },
+    { address: "sari farah abad road near the forest park villa 8", postalCode: "4816593472" },
+    { address: "gorgan valiasr street opposite the city library no 27", postalCode: "4917853264" },
+    { address: "arak shariati street beside the sports hall unit 11", postalCode: "3818946275" },
+    { address: "kermanshah modares boulevard near the taq e bostan entrance no 5", postalCode: "6718935246" },
+    { address: "bushehr sepah street facing the harbor lighthouse unit 3", postalCode: "7518946392" },
+    { address: "sanandaj ferdowsi street above the carpet shop floor 2", postalCode: "6616834759" },
+    { address: "tehran tajrish square second alley blue building unit 22", postalCode: "1957836421" }
+]
 export const OrderItems = [
     {
         unitPrice: 10000,
