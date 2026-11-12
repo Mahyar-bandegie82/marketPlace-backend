@@ -6,6 +6,7 @@ import sellerRoute from "./seller/seller.route.js";
 import adminRoute from "./admin/admin.route.js";
 import orderRoute from "./orders/order.route.js"
 import commentRoute from "./comment/comment.route.js"
+import productRoute from "./products/product.route.js";
 import {handleError, notFound} from "../../middleware/errorMiddleWare.js";
 
 export default function V1Loader() {
@@ -17,6 +18,8 @@ export default function V1Loader() {
     router.use("/seller", sellerRoute);
     router.use("/comments", commentRoute);
     router.use("/admin", adminRoute);
+    router.use("/products", productRoute);
+    router.use("/listings", productRoute);
 
     return router;
 }

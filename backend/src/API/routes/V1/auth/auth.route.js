@@ -14,7 +14,7 @@ import {
 import { generateAccessToken, generateOtp, generateRefreshToken, joiValidator } from "../../../../helper/helper.js";
 import { changeUserInfo, getProfile, login, sanitizeUser, signUp, markOtpVerified, unverifyUser } from "../../../../services/auth/user.auth.service.js";
 import crypto from "crypto";
-import { redisSaveOtp } from "../../../../services/redis/otp.service.js";
+import { redisSaveOtp,verifyOtp } from "../../../../services/redis/otp.service.js";
 
 
 await connectRedis();
@@ -88,6 +88,25 @@ router.post('/logout', async (req, res) => {
 })
 router.use(accessVerification, attachAbility)
 
+router.get('/me', async (req, res) => {
+    const user = await prismaPool.user.findUnique({
+        where: { id: req.id },
+        select: {
+            id: true,
+            userName: true,
+            phoneNumber: true,
+            email: true,
+            otpVerified: true,
+            dateCreated: true,
+            admin: { select: { id: true } },
+            client: { select: { id: true } },
+            seller: { select: { id: true, verified: true, storeName: true } },
+        }
+    });
+    if (!user) throw createError(404, "user not found");
+    return res.status(200).json({ user });
+});
+
 function maskEmail(email) {
     const [local, domain] = email.split('@');
     return `${local.slice(0, 3)}${'*'.repeat(Math.max(local.length - 3, 0))}@${domain}`;
@@ -96,9 +115,9 @@ function maskEmail(email) {
 router.get('/signup/reciveOtp', async (req, res) => {
     const user = await getProfile(req.id);
     if (user.otpVerified) throw createError(409, "account already verified");
-    const otp = generateOtp(user.email);
+    const otp = await generateOtp(user.email);
     await redisSaveOtp(otp, user.email, 'signup');
-    await sendOtp(user.email, otp);
+    // await sendOtp(user.email, otp);
     const Email = user.email.split('@')
 
     return res.status(200).json({ message: `otp was successfully sent to your email with the address of ${maskEmail(user.email)}` })

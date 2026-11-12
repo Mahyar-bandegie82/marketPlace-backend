@@ -1,11 +1,13 @@
 import morgan from "morgan";
 import express from "express";
+import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import { handleError, notFound } from "../API/middleware/errorMiddleWare.js";
 import routeLoader from "../API/routes/index.js";
+import V1Loader from "../API/routes/V1/index.js";
 import { loadSwaggerDocs } from "./loadDocs.js";   // adjust to where you put it
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -14,6 +16,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DOCS_DIR = path.join(__dirname, "../docs");   // adjust if your folder is elsewhere
 
 export function expressLoader(app, domain, port) {
+    app.use(cors({
+        origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+        credentials: true,
+    }));
     app.use(morgan("dev"));
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
@@ -24,7 +30,8 @@ export function expressLoader(app, domain, port) {
     app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
     app.get("/api-docs.json", (req, res) => res.json(swaggerDocs));
 
-    app.use("/api/V1", routeLoader());
+    app.use("/api", routeLoader());
+    app.use("/api/V1", V1Loader());
     app.use(notFound);
     app.use(handleError);
 

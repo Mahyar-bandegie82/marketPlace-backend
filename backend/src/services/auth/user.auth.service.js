@@ -34,6 +34,11 @@ export async function signUp(json) {
                 password: hashedPassword,
                 phoneNumber: json.phoneNumber,
                 email: json.email,
+            },
+            include: {
+                admin: { select: { id: true } },
+                seller: { select: { id: true, verified: true, storeName: true } },
+                client: { select: { id: true } }
             }
         });
         const client = await tx.client.create({
@@ -51,6 +56,11 @@ export async function signUp(json) {
 export async function login(json) {
     const user = await prisma.user.findUnique({
         where: {phoneNumber: json.phoneNumber},
+        include: {
+            admin: { select: { id: true } },
+            seller: { select: { id: true, verified: true, storeName: true } },
+            client: { select: { id: true } }
+        }
     });
 
     // same message for every failure so attackers can't tell which part was wrong

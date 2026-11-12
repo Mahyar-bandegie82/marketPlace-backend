@@ -45,22 +45,24 @@ export function generateRefreshToken(id, familyId) {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function generateOtp(email) {
-  const code = crypto.randomInt(100000, 999999);
+    const code = crypto.randomInt(100000, 999999);
 
-  const { data, error } = await resend.emails.send({
-    from: "onboarding@resend.dev",
-    to: "mahyarband1382@gmail.com", 
-    subject: "pc marketplace authentication",
-    html: `<p>well come to pc marketplace</p>
+    const { data, error } = await resend.emails.send({
+        from: "onboarding@resend.dev",
+        to: "mahyarband1382@gmail.com",
+        subject: "pc marketplace authentication",
+        html: `<p>well come to pc marketplace</p>
 
             <p>this is classified information dont share</p>
 
             <p>${code}</p>`,
-  });
+    });
 
-  if (error) {
-    console.error("Error:", error);
-    return;
-  }
-  console.log("Sent:", data, "| code:", code);
+
+    if (error) {
+        console.error("Error:", error);
+        return;
+    }
+    console.log("Sent:", data, "| code:", code);
+    return code
 }

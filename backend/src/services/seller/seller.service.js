@@ -111,9 +111,11 @@ export async function getListing(listingId, sellerId) {
     const listing = await prisma.sellerInventory.findUnique({
         where: { id: listingId, sellerId: sellerId },
         select: {
+            id: true,
             quantity: true, price: true, condition: true, isActive: true, productWaranty: true,
             product: {
                 select: {
+                    id: true,
                     productName: true, description: true, rating: true,
                     attributes: true, images: true, videos: true
                 },
@@ -128,9 +130,11 @@ export async function getAllListing(sellerId) {
     return await prisma.sellerInventory.findMany({
         where: { sellerId: sellerId },
         select: {
+            id: true,
             quantity: true, price: true, condition: true, isActive: true, productWaranty: true,
             product: {
                 select: {
+                    id: true,
                     productName: true, description: true, rating: true,
                     attributes: true, images: true, videos: true
                 },

@@ -143,7 +143,6 @@ const orderSelect = {
             listingId: true,
             quantity: true,
             unitPrice: true,
-            discountPercent: true,
             listing: {
                 select: {
                     condition: true,
@@ -164,8 +163,8 @@ function toOrderDto(order) {
         storeName: i.listing.seller.storeName,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
-        discountPercent: i.discountPercent,
-        lineTotal: Math.round((i.unitPrice * i.quantity * (100 - i.discountPercent)) / 100),
+        discountPercent: 0,
+        lineTotal: i.unitPrice * i.quantity,
     }));
 
     return {

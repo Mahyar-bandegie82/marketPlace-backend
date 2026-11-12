@@ -5,6 +5,7 @@ import createError from "http-errors";
 
 const TTL = 2 * 60;
 const MAX_ATTEMPTS = 3;
+const COOLDOWN = 120
 
 const action = {
     signup: (email) => `otp:signup:${email}`,
@@ -18,7 +19,7 @@ export async function redisSaveOtp(otp, email, purpose) {
     const key = action[purpose](email.toLowerCase());
     const attemptsKey = `${key}:attempts`;
     const cooldownKey = `${key}:cooldown`;
-
+    console.log(otp)
     const encryptedOtp = await hashPassword(String(otp));
 
     const allowed = await redis.set(cooldownKey, '1', { EX: COOLDOWN, NX: true });
@@ -48,7 +49,7 @@ export async function verifyOtp(otp, email, purpose) {
         await redis.del([key, attemptsKey])
         throw createError(429, "Too many attempts, request a new OTP");
     }
-
+    console.log(otp)
     if (!await comparePassword(String(otp), hash)) {
         throw createError(400, "otp is incorrect")
     }
