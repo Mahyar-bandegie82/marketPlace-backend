@@ -37,13 +37,8 @@ const newPassword = Joi.string()
             "password must be 9-72 characters with at least 2 capital letters, 2 numbers and 1 special character (e.g. @), and no spaces",
     });
 
-const currentPassword = Joi.string().max(72)
+const currentPassword = Joi.string().max(72);
 
-// ---------------------------------------------------------------------------
-// Request schemas
-// ---------------------------------------------------------------------------
-
-/** Sign up (register a new account). */
 const signUpSchema = Joi.object({
     userName: userName.required(),
     password: newPassword.required(),
@@ -51,13 +46,11 @@ const signUpSchema = Joi.object({
     email: email.required(),
 });
 
-/** Log in. */
 const loginSchema = Joi.object({
     userName: userName.required(),
     password: currentPassword.required(),
     phoneNumber: phoneNumber.required(),
 });
-
 
 const changeCredentialsSchema = Joi.object({
     phoneNumber: phoneNumber.required(),
@@ -70,9 +63,10 @@ const changeCredentialsSchema = Joi.object({
         "object.min":
             "changes must contain at least one of: userName, phoneNumber, password",
     }),
-})
+});
+
 export const verifyOtpSchema = Joi.object({
     otp: Joi.string().trim().required().min(6).max(6)
-})
+});
 
 export { loginSchema, changeCredentialsSchema, signUpSchema };

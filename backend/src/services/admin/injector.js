@@ -7,18 +7,20 @@ import {
     sellerInventory,
     seller,
     ProductCategory
-} from "./data.js"
+} from "./data.js";
 
-const prisma = prismaPool
+const prisma = prismaPool;
 
+// Create an admin record for a specified user ID
 async function makeAdmin(userId) {
     const user = await prisma.admin.create({
         data: { userId: userId }
-    })
+    });
     if (!user) { throw createError(400, 'somthing went wrong.'); }
     return user;
 }
 
+// Seed mock users into the database
 async function generateFakeUser() {
     try {
         const data = [];
@@ -40,8 +42,8 @@ async function generateFakeUser() {
                 data,
                 skipDuplicates: true,
             });
-            return result
-        })
+            return result;
+        });
 
         console.log(`Successfully injected ${result.count} users.`);
     } catch (error) {
@@ -50,6 +52,7 @@ async function generateFakeUser() {
 }
 console.log(await generateFakeUser());
 
+// Seed client profiles with initial addresses for existing users
 async function generateClientProfile() {
     return prisma.$transaction(async (tx) => {
         const users = await tx.user.findMany({
@@ -76,6 +79,7 @@ async function generateClientProfile() {
     });
 }
 
+// Seed mock products into the product catalog
 async function genProduct() {
     return await prisma.product.createMany({
         data: product.map((prod) => ({
@@ -85,39 +89,47 @@ async function genProduct() {
             model: prod.model,
             brand: prod.brand
         }))
-    })
+    });
 }
+
+// Seed mock seller records into the database
 async function makeSeller() {
     return prisma.seller.createMany({
         data: seller
     });
 }
+
+// Seed seller inventory listings into the database
 async function makeSellerInventory() {
     return prisma.sellerInventory.createMany({
         data: sellerInventory,
         skipDuplicates: true,
     });
 }
+
+// Seed initial shopping carts for existing clients
 async function makeShoppingCart() {
     const users = await prisma.client.findMany({
         select: { id: true },
         orderBy: { id: "asc" },
     });
-    let ids = [...users]
+    let ids = [...users];
     return await prisma.shoppingCart.createMany({
         data: ids.map((id) => {
             return {
-                clientId : id.id
-            }
+                clientId: id.id
+            };
         })
-    })
+    });
 }
 
+// Seed product categories into the database
 async function makeCategory() {
     return await prisma.productCategory.createMany({
-        data : ProductCategory
-    })
+        data: ProductCategory
+    });
 }
+
 makeAdmin(31)
     .then((result) => console.log(`Created ${result.count} listings.`))
     .catch(console.error)

@@ -1,11 +1,10 @@
-// middlewares/auth/ability.middleware.js
 import createError from 'http-errors';
-import {prismaPool} from '../../helper/helper.js';
+import { prismaPool } from '../../helper/helper.js';
 import { defineAbilityFor } from '../../permissions/defineAbility.js';
 import { ForbiddenError } from '@casl/ability';
 
+// Fetch user roles and attach CASL ability instance to the request
 export async function attachAbility(req, res, next) {
-    // no token was provided -> guest
     if (req.id === undefined) {
         req.user = null;
         req.ability = defineAbilityFor(null);
@@ -22,13 +21,14 @@ export async function attachAbility(req, res, next) {
         },
     });
     // console.log(user);
-    if (!user) next(createError(401, 'User not found')) ;
+    if (!user) next(createError(401, 'User not found'));
 
     req.user = user;
     req.ability = defineAbilityFor(user);
     next();
 }
 
+// Middleware generator to enforce CASL authorization rule on specified action and subject
 export const authorize = (action, subjectType) => (req, res, next) => {
     ForbiddenError.from(req.ability).throwUnlessCan(action, subjectType);
     next();

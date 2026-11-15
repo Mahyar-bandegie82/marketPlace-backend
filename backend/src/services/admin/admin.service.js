@@ -1,8 +1,9 @@
 import createError from "http-errors";
 import { prismaPool } from "../../helper/helper.js";
 
-const prisma = prismaPool
+const prisma = prismaPool;
 
+// Retrieve unverified seller registration requests
 export async function seeSellerRequests() {
     let sellers = await prisma.seller.findMany({
         where: { verified: false },
@@ -12,11 +13,12 @@ export async function seeSellerRequests() {
             verified: true,
             id: true
         }
-    })
-    if (sellers.length === 0) { sellers = "there are no unverified sellers" }
-    return sellers
+    });
+    if (sellers.length === 0) { sellers = "there are no unverified sellers"; }
+    return sellers;
 }
 
+// Verify and approve a seller account
 export async function verifySeller(userId) {
     const seller = await prisma.seller.findUnique({ where: { userId } });
     if (!seller) throw createError(404, 'seller profile not found');
@@ -28,6 +30,7 @@ export async function verifySeller(userId) {
     });
 }
 
+// Delete a seller profile by user ID
 export async function revokeSeller(userId) {
     const seller = await prisma.seller.findUnique({ where: { userId } });
     if (!seller) throw createError(404, 'seller not found');
@@ -35,6 +38,7 @@ export async function revokeSeller(userId) {
     await prisma.seller.delete({ where: { userId } });
 }
 
+// Revoke verification status from a seller account
 export async function unverifySeller(userId) {
     const seller = await prisma.seller.findUnique({ where: { userId } });
     if (!seller) throw createError(404, 'seller not found');
@@ -42,32 +46,33 @@ export async function unverifySeller(userId) {
     return await prisma.seller.update({
         where: { userId },
         data: { verified: false },
-    })
+    });
 }
 
+// Add a new unique product category
 export async function addcategory(body) {
     const exist = await prisma.productCategory.findUnique({
         where: { categoryName: body.categoryName }
-    })
+    });
     if (exist) {
         throw createError(400, 'categoryName already exists');
     }
     return await prisma.productCategory.create({
         data: { categoryName: body.categoryName },
-    })
+    });
 }
 
-
-
+// Update the status of an order
 export async function updateorderStatus(orderId, status) {
     const order = await prisma.order.update({
         where: { id: orderId },
         data: { orderStatus: status }
-    })
+    });
     if (!order) throw createError(404, "order not found");
     return order;
 }
 
+// Retrieve users who have not completed OTP verification
 export async function getNonOtpVerifiedUsers() {
     const users = await prisma.user.findMany({
         where: { otpVerified: false },
@@ -75,14 +80,14 @@ export async function getNonOtpVerifiedUsers() {
             userName: true, phoneNumber: true, email: true,
             otpVerified: true, dateCreated: true
         }
-    })
+    });
     if (users.length <= 0) throw createError(400, "there is no non otp verified users");
-
-    return users
+    return users;
 }
 
+// Delete unverified user accounts older than thirty days
 export async function delete30DaysOldNonOtpVerifiedUsers() {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const { count } = await prisma.user.deleteMany({
         where: {
@@ -92,9 +97,10 @@ export async function delete30DaysOldNonOtpVerifiedUsers() {
         }
     });
 
-    return { deletedCount: count, message: `successfully deleted ${count} users` }
+    return { deletedCount: count, message: `successfully deleted ${count} users` };
 }
 
+// Fetch customers marked as loyal sorted by total amount spent
 export async function getLoyalCustomers() {
     const clients = await prisma.client.findMany({
         where: { loyalCustomer: true },
@@ -106,18 +112,19 @@ export async function getLoyalCustomers() {
             }
         },
         orderBy: { amountSpent: 'desc' }
-    })
+    });
     const loyals = clients.map(({ id, amountSpent, user }) => ({
         clientId: id,
         amountSpent,
         ...user
-    }))
+    }));
     return {
         massage: `you hav e${loyals.length} loyal customers`,
         loyals
-    }
+    };
 }
 
+// Fetch customers whose total spending meets or exceeds specified amount
 export async function getUsersWithHighAmountSpent(money) {
     const clients = await prisma.client.findMany({
         where: { amountSpent: { gte: money } },
@@ -129,18 +136,19 @@ export async function getUsersWithHighAmountSpent(money) {
             }
         },
         orderBy: { amountSpent: 'desc' }
-    })
+    });
     const loyals = clients.map(({ id, amountSpent, user }) => ({
         clientId: id,
         amountSpent,
         ...user
-    }))
+    }));
     return {
         massage: `you hav e${loyals.length} loyal customers`,
         loyals
-    }
+    };
 }
 
+// Fetch all trusted sellers with user details
 export async function getAlltrustedSelers() {
     const trustedSellers = await prisma.seller.findMany({
         where: { trusted: true },
@@ -152,15 +160,16 @@ export async function getAlltrustedSelers() {
             }
         },
         orderBy: { id: 'desc' }
-    })
+    });
     return trustedSellers.map(({ id, storeName, trusted, user }) => ({
         sellerId: id,
         storeName,
         trusted,
         ...user
-    }))
+    }));
 }
 
+// Calculate best-selling brands ranked by unit sales and revenue
 export async function getBestSellingBrands(limit = 10) {
     return prisma.$queryRaw`
         SELECT p."brand",
@@ -174,18 +183,19 @@ export async function getBestSellingBrands(limit = 10) {
         GROUP BY p."brand"
         ORDER BY "unitsSold" DESC
         LIMIT ${limit}
-    `
+    `;
 }
 
+// Retrieve brands ranked by total product count
 export async function getBrandsByProductCount(limit = 10) {
     const brands = await prisma.product.groupBy({
         by: ['brand'],
         _count: { _all: true },
         orderBy: { _count: { brand: 'desc' } },
         take: limit
-    })
+    });
 
-    return brands.map(({ brand, _count }) => ({ brand, products: _count._all }))
+    return brands.map(({ brand, _count }) => ({ brand, products: _count._all }));
 }
 
 const allowedTransitions = {
@@ -195,17 +205,18 @@ const allowedTransitions = {
     RETURNED:   ['REFUNDED'],
     CANCELED:   [],
     REFUNDED:   []
-}
+};
 
+// Validate state transition and update order fulfillment status
 export async function changeOrderStatus(orderId, newStatus) {
     const order = await prisma.order.findUnique({
         where: { id: orderId },
         select: { orderStatus: true }
-    })
-    if (!order) throw createError(404, 'Order not found')
+    });
+    if (!order) throw createError(404, 'Order not found');
 
     if (!allowedTransitions[order.orderStatus].includes(newStatus)) {
-        throw createError(400, `Cannot change order from ${order.orderStatus} to ${newStatus}`)
+        throw createError(400, `Cannot change order from ${order.orderStatus} to ${newStatus}`);
     }
 
     const { count } = await prisma.order.updateMany({
@@ -214,15 +225,16 @@ export async function changeOrderStatus(orderId, newStatus) {
             orderStatus: newStatus,
             ...(newStatus === 'DELIVERED' && { deliveredAt: new Date() })
         }
-    })
-    if (count === 0) throw createError(409, 'Order status was changed by someone else, try again')
+    });
+    if (count === 0) throw createError(409, 'Order status was changed by someone else, try again');
 
     return prisma.order.findUnique({
         where: { id: orderId },
         select: { id: true, orderStatus: true, deliveredAt: true }
-    })
+    });
 }
 
+// Retrieve most-liked comments across all products
 export async function getMostLikedComments(limit = 10) {
     const comments = await prisma.comment.findMany({
         orderBy: [{ like: 'desc' }, { createdAt: 'desc' }],
@@ -237,19 +249,20 @@ export async function getMostLikedComments(limit = 10) {
             product: { select: { id: true, brand: true, model: true, productName: true } },
             client: { select: { user: { select: { userName: true } } } }
         }
-    })
+    });
 
     return comments.map(({ client, ...comment }) => ({
         ...comment,
         userName: client.user.userName
-    }))
+    }));
 }
 
+// Retrieve most-liked comments for a specific product
 export async function getMostLikedCommentsForProduct(productId, limit = 10) {
     return prisma.comment.findMany({
         where: { productId },
         orderBy: [{ like: 'desc' }, { createdAt: 'desc' }],
         take: limit,
         select: { id: true, massage: true, rating: true, like: true, dislike: true, createdAt: true }
-    })
+    });
 }

@@ -1,13 +1,14 @@
-import dotenv from 'dotenv'
-dotenv.config()
+import dotenv from 'dotenv';
+dotenv.config();
 import redis from 'redis';
 
-const redisClient = redis.createClient({url: process.env.REDIS_URL});
+const redisClient = redis.createClient({ url: process.env.REDIS_URL });
 
 redisClient.on('error', (err) => {
     console.error('redis error:', err);
-})
+});
 
+// Connect the Redis client if not already open
 const connectRedis = async () => {
     if (!redisClient.isOpen) {
         console.log("redis has been connected");
@@ -15,6 +16,7 @@ const connectRedis = async () => {
     }
 };
 
+// Disconnect the Redis client if currently connected
 const disconnectRedis = async () => {
     if (redisClient.isOpen) {
         await redisClient.quit();

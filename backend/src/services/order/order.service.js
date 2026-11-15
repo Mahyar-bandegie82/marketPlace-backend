@@ -1,10 +1,9 @@
-import { prismaPool } from "../../helper/helper.js"
-import createError from "http-errors"
+import { prismaPool } from "../../helper/helper.js";
+import createError from "http-errors";
 
+const prisma = prismaPool;
 
-const prisma = prismaPool
-
-
+// Create order from cart items, reserve inventory stock, and clear cart in a transaction
 export async function createOrder(userId, { address, postalCode }) {
     return prisma.$transaction(async (tx) => {
         const cart = await tx.shoppingCart.findFirst({
@@ -73,13 +72,14 @@ export async function createOrder(userId, { address, postalCode }) {
             data: {
                 amountSpent: { increment: totalAmount }
             }
-        })
+        });
         await tx.cartItem.deleteMany({ where: { shoppingCartId: cart.id } });
 
         return order;
     });
 }
 
+// Cancel a processing order, restore stock to inventory, and adjust spent amount
 export async function cancelOrder(userId, orderId) {
     return prisma.$transaction(async (tx) => {
         const { count } = await tx.order.updateMany({
@@ -108,7 +108,7 @@ export async function cancelOrder(userId, orderId) {
             data: {
                 amountSpent: { decrement: totalOrderPrice }
             }
-        })
+        });
         for (const item of items) {
             await tx.sellerInventory.update({
                 where: { id: item.listingId },
@@ -120,6 +120,7 @@ export async function cancelOrder(userId, orderId) {
     });
 }
 
+// Update shipping address and postal code for an order in processing status
 export async function updateProcessingOrder(userId, orderId, { address, postalCode }) {
     const orderUpdated = prisma.order.update({
         where: { id: orderId, orderStatus: 'PROCESSING', client: { userId } },
@@ -154,6 +155,7 @@ const orderSelect = {
     },
 };
 
+// Map raw order and line items to structured order data transfer object
 function toOrderDto(order) {
     const items = order.orderItems.map((i) => ({
         listingId: i.listingId,
@@ -180,6 +182,7 @@ function toOrderDto(order) {
     };
 }
 
+// Retrieve processing and shipped orders for a client formatted as DTOs
 export async function getActiveOrders(userId) {
     const orders = await prisma.order.findMany({
         where: {

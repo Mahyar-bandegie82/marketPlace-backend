@@ -8,13 +8,13 @@ import swaggerUi from "swagger-ui-express";
 import { handleError, notFound } from "../API/middleware/errorMiddleWare.js";
 import routeLoader from "../API/routes/index.js";
 import V1Loader from "../API/routes/V1/index.js";
-import { loadSwaggerDocs } from "./loadDocs.js";   // adjust to where you put it
+import { loadSwaggerDocs } from "./loadDocs.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// folder that holds auth.yaml, users.yaml, components.yaml
-const DOCS_DIR = path.join(__dirname, "../docs");   // adjust if your folder is elsewhere
+const DOCS_DIR = path.join(__dirname, "../docs");
 
+// Configure middleware, documentation, routes, and start the HTTP listener
 export function expressLoader(app, domain, port) {
     app.use(cors({
         origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],

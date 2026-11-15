@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import createError from "http-errors";
 
+// Verify Bearer access token in Authorization header and attach user ID to request
 export function accessVerification(req, res, next) {
     const [scheme, token] = (req.headers.authorization || "").split(" ");
     if (scheme !== "Bearer" || !token) {
@@ -17,6 +18,7 @@ export function accessVerification(req, res, next) {
     });
 }
 
+// Verify Bearer access token if provided, allowing guest access when omitted
 export function optionalAccessVerification(req, res, next) {
     if (!req.headers.authorization) {
         return next();

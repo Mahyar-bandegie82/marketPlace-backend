@@ -4,11 +4,12 @@ import authRoute from "./auth/auth.route.js";
 import userRoute from "./user/user.route.js";
 import sellerRoute from "./seller/seller.route.js";
 import adminRoute from "./admin/admin.route.js";
-import orderRoute from "./orders/order.route.js"
-import commentRoute from "./comment/comment.route.js"
+import orderRoute from "./orders/order.route.js";
+import commentRoute from "./comment/comment.route.js";
 import productRoute from "./products/product.route.js";
-import {handleError, notFound} from "../../middleware/errorMiddleWare.js";
+import { handleError, notFound } from "../../middleware/errorMiddleWare.js";
 
+// Initialize and mount all V1 resource routes
 export default function V1Loader() {
     const router = express.Router();
 

@@ -9,7 +9,6 @@ export const OrderIdSchema = Joi.object({
     orderId: Joi.number().integer().positive().required(),
 }).required();
 
-// optional: GET /orders?status=SHIPPED&page=1&limit=10
 export const orderListQuerySchema = Joi.object({
     status: Joi.string().valid('PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELED', 'RETURNED', 'REFUNDED'),
     page: Joi.number().integer().min(1).default(1),

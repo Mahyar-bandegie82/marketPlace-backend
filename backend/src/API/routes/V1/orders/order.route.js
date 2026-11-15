@@ -10,15 +10,17 @@ const router = express.Router();
 
 router.use(optionalAccessVerification, attachAbility);
 
+// Retrieve active orders for the authenticated user
 router.get("/getOrders", authorize("read", "Order"), async (req, res) => {
     const orderList = await getActiveOrders(req.id);
     res.status(200).json({ orders: orderList, message: "orders fetched successfully" });
 });
 
+// Access verification middleware for mutating requests
 router.use(accessVerification);
 router.use(attachAbility);
 
-
+// Create a new order from current cart items
 router.post("/createOrder", authorize("create", "Order"), async (req, res) => {
     if (!req.body) throw createError(405, "body is missing");
     const body = await joiValidator(createOrderSchema, req.body);
@@ -27,6 +29,7 @@ router.post("/createOrder", authorize("create", "Order"), async (req, res) => {
     res.status(201).json(order);
 });
 
+// Cancel a processing order by order ID
 router.put("/cancelOrder/:orderId", authorize("update", "Order"), async (req, res) => {
     const orderIdValidated = await joiValidator(OrderIdSchema, req.params);
     const userId = req.id;
@@ -34,10 +37,7 @@ router.put("/cancelOrder/:orderId", authorize("update", "Order"), async (req, re
     res.status(200).json(order);
 });
 
-// ==========================================
-// PATCH Routes
-// ==========================================
-
+// Update shipping address on a processing order
 router.patch("/updateOrderAddress/:orderId", authorize("update", "Order"), async (req, res) => {
     const { orderId } = await joiValidator(OrderIdSchema, req.params);
     const { postalCode, address } = await joiValidator(updateOrderSchema, req.body);

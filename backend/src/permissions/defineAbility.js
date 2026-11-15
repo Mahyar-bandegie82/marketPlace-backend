@@ -1,30 +1,27 @@
 import { AbilityBuilder } from '@casl/ability';
 import { createPrismaAbility } from '@casl/prisma';
 
-
+// Define CASL authorization permissions and rules based on user role and attributes
 export function defineAbilityFor(user) {
     const { can, cannot, build } = new AbilityBuilder(createPrismaAbility);
 
     can('read', 'Product');
     can('read', 'ProductCategory');
     can('read', 'SellerInventory', { isActive: true });
-    can('read', 'Seller', ['id', 'storeName', 'trusted']);   // public store info
+    can('read', 'Seller', ['id', 'storeName', 'trusted']);
     can('read', 'Comment');
     can('read', 'Promotions');
     can('read', 'PromotionListing');
 
     if (!user) return build();
 
-    // ───────────── Any logged-in user: own account ─────────────
     can('read', 'User', ['id', 'userName', 'email', 'phoneNumber'], { id: user.id });
     can('update', 'User', ['userName', 'email', 'phoneNumber', 'password'], { id: user.id });
 
     const { admin, client, seller } = user;
 
-    // ───────────── Client profile ─────────────
     if (client) {
         can('read', 'Client', { id: client.id });
-        // Addresses/postalCode only. NOT loyalCustomer / amountSpent
         can('update', 'Client', ['Addresses', 'postalCode'], { id: client.id });
         can('delete', 'Client', ['Addresses', 'postalCode'], { id: client.id });
         can('create', 'Client', ['Addresses', 'postalCode'], { id: client.id });
@@ -41,7 +38,7 @@ export function defineAbilityFor(user) {
         can('delete', 'Comment', { clientId: client.id });
         can('react', 'Comment');
 
-        can('create', 'Seller')
+        can('create', 'Seller');
 
         can(['create', 'read'], 'Order', { clientId: client.id });
         can('update', 'Order', ['address', 'postalCode'], { clientId: client.id, orderStatus: { in: ['PROCESSING'] } });
@@ -62,28 +59,26 @@ export function defineAbilityFor(user) {
             can('delete', 'SellerInventory', { sellerId: seller.id });
             can('read', 'SellerInventory', { sellerId: seller.id });
             can('update', 'SellerInventory', ['quantity', 'price', 'condition', 'isActive', 'productWaranty'], { sellerId: seller.id });
-            can('create', 'Promotions', { sellerId: seller.id })
-            can('read', 'Promotions', { sellerId: seller.id })
-            can('delete', 'Promotions', { sellerId: seller.id })
-            can('create', 'PromotionListing', { sellerId: seller.id })
-            can('delete', 'PromotionListing', { sellerId: seller.id })
-            can('update', 'PromotionListing', { sellerId: seller.id })
-            can('read', 'PromotionListing', { sellerId: seller.id })
+            can('create', 'Promotions', { sellerId: seller.id });
+            can('read', 'Promotions', { sellerId: seller.id });
+            can('delete', 'Promotions', { sellerId: seller.id });
+            can('create', 'PromotionListing', { sellerId: seller.id });
+            can('delete', 'PromotionListing', { sellerId: seller.id });
+            can('update', 'PromotionListing', { sellerId: seller.id });
+            can('read', 'PromotionListing', { sellerId: seller.id });
         }
-
 
         cannot('create', 'OrderItems', { listing: { sellerId: seller.id } });
     }
 
-    // ───────────── Admin profile ─────────────
     if (admin) {
         can(['read', 'verify', 'trust', 'delete, unverify'], 'Seller');
-        can('read', 'SellerInventory');                       // all, including inactive
-        can('update', 'SellerInventory', ['isActive']);       // take a listing down
+        can('read', 'SellerInventory');
+        can('update', 'SellerInventory', ['isActive']);
         can('manage', ['Product', 'ProductCategory', 'Promotions', 'PromotionListing']);
         can(['read', 'update'], 'Order');
         can('read', 'OrderItems');
-        can('delete', 'Comment');                             // moderation
+        can('delete', 'Comment');
     }
 
     return build();

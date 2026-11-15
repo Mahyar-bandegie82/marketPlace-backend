@@ -10,35 +10,24 @@ const router = express.Router();
 
 router.use(optionalAccessVerification, attachAbility);
 
-// ==========================================
-// GET Routes (Before Access Middleware)
-// ==========================================
-
+// Retrieve all reviews submitted by the authenticated client
 router.get('/getComments', async (req, res) => {
     if (!req.user?.client) throw createError(403, "only clients have reviews");
     const comments = await getComments(req.user.client.id);
     return res.status(200).json({ comments });
 });
 
-// ==========================================
-// Access Middleware (Requires Access Token)
-// ==========================================
+// Access verification middleware for mutating requests
 router.use(accessVerification, attachAbility);
 
-// ==========================================
-// POST Routes
-// ==========================================
-
+// Create a new product review and rating
 router.post('/createComment', authorize('create', 'Comment'), async (req, res) => {
     const body = await joiValidator(createCommentSchema, req.body);
     const comment = await createComment(req.user.client.id, body);
     return res.status(201).json({ message: "comment added", comment });
 });
 
-// ==========================================
-// PATCH Routes
-// ==========================================
-
+// Update an existing product review and rating
 router.patch('/updateComment/:productId', authorize('update', 'Comment'), async (req, res) => {
     const { productId } = await joiValidator(ProductIdSchema, req.params);
     const body = await joiValidator(updateCommentSchema, req.body);
@@ -46,10 +35,7 @@ router.patch('/updateComment/:productId', authorize('update', 'Comment'), async 
     return res.status(200).json({ message: "comment updated", comment });
 });
 
-// ==========================================
-// DELETE Routes
-// ==========================================
-
+// Delete a client's review for a product
 router.delete('/deleteComment/:productId', authorize('delete', 'Comment'), async (req, res) => {
     const { productId } = await joiValidator(ProductIdSchema, req.params);
     await deleteComment(req.user.client.id, productId);

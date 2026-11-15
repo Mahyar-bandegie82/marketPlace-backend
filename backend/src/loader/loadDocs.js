@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { load } from "js-yaml";
 
+// Load and merge YAML OpenAPI documentation files into a single Swagger specification
 export function loadSwaggerDocs(docsDir, serverUrl) {
     if (!fs.existsSync(docsDir)) {
         throw new Error(`Swagger docs folder not found: ${docsDir}`);

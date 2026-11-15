@@ -1,11 +1,12 @@
-// middleware/errorHandler.js
 import createError from "http-errors";
 import { ForbiddenError } from '@casl/ability';
-// 404 for unmatched routes
+
+// Forward 404 error for unhandled routes
 export function notFound(req, res, next) {
     next(createError(404, "route not found"));
 }
 
+// Centralized error handling middleware formatting error responses and status codes
 export function handleError(err, req, res, next) {
     let status = err.status || err.statusCode || 500;
     let message = err.message;
@@ -26,11 +27,11 @@ export function handleError(err, req, res, next) {
 
     if (status >= 500) {
         console.error(err);
-        message = "internal server error"; // don't leak internals
+        message = "internal server error";
     }
 
-    const body = {error: message};
-    if (err.details) body.details = err.details; // validation errors
+    const body = { error: message };
+    if (err.details) body.details = err.details;
 
     return res.status(status).json(body);
 }

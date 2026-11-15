@@ -5,21 +5,22 @@ import createError from "http-errors";
 
 const TTL = 2 * 60;
 const MAX_ATTEMPTS = 3;
-const COOLDOWN = 120
+const COOLDOWN = 120;
 
 const action = {
     signup: (email) => `otp:signup:${email}`,
     passwordChange: (email) => `otp:passwordChange:${email}`
-}
+};
 
+// Hash and save OTP code in Redis with rate-limiting cooldown and TTL
 export async function redisSaveOtp(otp, email, purpose) {
     if (!(purpose === "signup" || purpose === "passwordChange")) {
-        throw createError(400, 'invalid database action')
+        throw createError(400, 'invalid database action');
     }
     const key = action[purpose](email.toLowerCase());
     const attemptsKey = `${key}:attempts`;
     const cooldownKey = `${key}:cooldown`;
-    console.log(otp)
+    console.log(otp);
     const encryptedOtp = await hashPassword(String(otp));
 
     const allowed = await redis.set(cooldownKey, '1', { EX: COOLDOWN, NX: true });
@@ -32,26 +33,27 @@ export async function redisSaveOtp(otp, email, purpose) {
         .exec();
 }
 
+// Verify user-provided OTP code against hashed value in Redis with attempt tracking
 export async function verifyOtp(otp, email, purpose) {
     if (!(purpose === "signup" || purpose === "passwordChange")) {
-        throw createError(400, 'invalid database action')
+        throw createError(400, 'invalid database action');
     }
-    const key = action[purpose](email.toLowerCase())
+    const key = action[purpose](email.toLowerCase());
     const attemptsKey = `${key}:attempts`;
 
-    const hash = await redis.get(key)
+    const hash = await redis.get(key);
     if (!hash) throw createError(404, "otp was not found");
 
     const attempts = await redis.incr(attemptsKey);
     if (attempts === 1) await redis.expire(attemptsKey, TTL);
 
     if (attempts > MAX_ATTEMPTS) {
-        await redis.del([key, attemptsKey])
+        await redis.del([key, attemptsKey]);
         throw createError(429, "Too many attempts, request a new OTP");
     }
-    console.log(otp)
+    console.log(otp);
     if (!await comparePassword(String(otp), hash)) {
-        throw createError(400, "otp is incorrect")
+        throw createError(400, "otp is incorrect");
     }
 
     await redis.del([key, attemptsKey]);
