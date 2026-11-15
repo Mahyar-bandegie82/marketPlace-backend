@@ -24,13 +24,27 @@ export async function sellerSignUp(userId, body) {
     });
 }
 
+// Retrieve seller profile status for a user (including whether verified by admin)
+export async function getSellerStatus(userId) {
+    const seller = await prisma.seller.findUnique({
+        where: { userId },
+        select: {
+            id: true,
+            storeName: true,
+            verified: true,
+            trusted: true,
+            userId: true,
+        },
+    });
+    return seller;
+}
+
 // Create or find a product and add it to the seller's inventory
 export async function addToInventory(sellerId, body) {
     const { productId, product, quantity, price, condition, productWaranty } = body;
 
     return prisma.$transaction(async tx => {
         let id = productId;
-        console.log(sellerId, body);
         if (id === undefined) {
             const existingProduct = await tx.product.findUnique({
                 where: { model_brand: { model: product.model, brand: product.brand } },
@@ -48,7 +62,10 @@ export async function addToInventory(sellerId, body) {
                     images: product.images,
                     videos: product.videos,
                     categories: {
-                        connect: product.categories.map(categoryName => ({ categoryName })),
+                        connectOrCreate: product.categories.map(categoryName => ({
+                            where: { categoryName },
+                            create: { categoryName },
+                        })),
                     },
                 },
             });
@@ -65,7 +82,22 @@ export async function addToInventory(sellerId, body) {
                 sellerId_productId_condition: { sellerId, productId: id, condition }
             }
         });
-        if (repeated) throw createError(409, "you already have a listing for this product");
+        if (repeated) {
+            if (!repeated.isActive) {
+                return tx.sellerInventory.update({
+                    where: { id: repeated.id },
+                    data: {
+                        quantity,
+                        price,
+                        condition,
+                        productWaranty: productWaranty ?? {},
+                        isActive: true,
+                    },
+                    include: { product: true },
+                });
+            }
+            throw createError(409, "you already have a listing for this product and condition");
+        }
         return tx.sellerInventory.create({
             data: { sellerId, productId: id, quantity, price, condition, productWaranty },
             include: { product: true },
@@ -114,12 +146,13 @@ export async function getListing(listingId, sellerId) {
         where: { id: listingId, sellerId: sellerId },
         select: {
             id: true,
-            quantity: true, price: true, condition: true, isActive: true, productWaranty: true,
+            quantity: true, price: true, discountedPrice: true, condition: true, isActive: true, productWaranty: true,
             product: {
                 select: {
                     id: true,
-                    productName: true, description: true, rating: true,
-                    attributes: true, images: true, videos: true
+                    productName: true, brand: true, model: true, description: true, rating: true,
+                    attributes: true, images: true, videos: true,
+                    categories: { select: { categoryName: true } }
                 },
             }
         }
@@ -132,14 +165,16 @@ export async function getListing(listingId, sellerId) {
 export async function getAllListing(sellerId) {
     return await prisma.sellerInventory.findMany({
         where: { sellerId: sellerId },
+        orderBy: { id: 'desc' },
         select: {
             id: true,
-            quantity: true, price: true, condition: true, isActive: true, productWaranty: true,
+            quantity: true, price: true, discountedPrice: true, condition: true, isActive: true, productWaranty: true,
             product: {
                 select: {
                     id: true,
-                    productName: true, description: true, rating: true,
-                    attributes: true, images: true, videos: true
+                    productName: true, brand: true, model: true, description: true, rating: true,
+                    attributes: true, images: true, videos: true,
+                    categories: { select: { categoryName: true } }
                 },
             }
         },
@@ -149,10 +184,10 @@ export async function getAllListing(sellerId) {
 // Look up seller ID corresponding to a given user ID
 export async function getSellerIdWithUserId(userId) {
     const user = await prisma.user.findUnique({
-        where: { id: userId, seller: { userId } },
+        where: { id: userId },
         select: { seller: { select: { id: true } } }
     });
-    if (!user || !user.seller.id) throw createError(404, "user not found or user is not a seller");
+    if (!user || !user.seller?.id) throw createError(404, "user not found or user is not a seller");
 
     return user.seller.id;
 }
@@ -318,7 +353,7 @@ export async function deleteListingfromPromotion(userId, promotionId, listingId)
             where: { id: promotionId },
             select: { sellerId: true }
         });
-        if (promotion.sellerId !== seller || !promotion) { throw createError(400, "promotion not found"); }
+        if (!promotion || promotion.sellerId !== seller) { throw createError(400, "promotion not found"); }
 
         const { count } = await tx.promotionListing.deleteMany({
             where: { listingId, promotionId },
@@ -344,7 +379,7 @@ export async function updatePromotionListing(userId, body) {
                 promotionId_listingId: { promotionId, listingId }
             },
             select: {
-                promotion: { select: { sellerId: true } }
+                promotion: { select: { sellerId: true, endDate: true } }
             }
         });
         if (!pl || pl.promotion.sellerId !== seller) throw createError(402, "promotionListing notfound");

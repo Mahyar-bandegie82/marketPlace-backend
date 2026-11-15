@@ -21,6 +21,7 @@ import {
   Award,
   CheckCircle2,
   Layers,
+  MessageSquare,
 } from 'lucide-react';
 
 function ValuePropCard({ icon: Icon, title, description, color }) {
@@ -413,43 +414,60 @@ export default function HomePage() {
                         <span className="font-semibold uppercase tracking-wider">{p.brand}</span>
                         <span className="flex items-center gap-1 text-amber-500 font-semibold">
                           <Star size={12} className="fill-amber-400" />
-                          {(p.rating || 0).toFixed(1)}
+                          {p.rating > 0 ? `${Number(p.rating).toFixed(1)}/100` : 'Unrated'}
                         </span>
                       </div>
-                      <h3 className="font-bold text-base text-gray-900 dark:text-white capitalize line-clamp-1">
-                        {p.productName}
-                      </h3>
+                      <Link to={`/products/${p.id}`}>
+                        <h3 className="font-bold text-base text-gray-900 dark:text-white capitalize line-clamp-1 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                          {p.productName}
+                        </h3>
+                      </Link>
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">
                         {p.description}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+                    <div className="pt-3 border-t border-gray-100 dark:border-gray-800 space-y-3">
                       {bestListing ? (
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <div className="text-lg font-extrabold text-gray-900 dark:text-white">
-                              ${(minPrice || 0).toLocaleString()}
-                            </div>
-                            {hasDiscount && (
-                              <div className="text-xs text-gray-400 line-through">
-                                ${bestListing.price.toLocaleString()}
+                        <>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <div>
+                              <div className="text-lg font-extrabold text-gray-900 dark:text-white">
+                                ${(minPrice || 0).toLocaleString()}
                               </div>
-                            )}
+                              {hasDiscount && (
+                                <div className="text-xs text-gray-400 line-through">
+                                  ${bestListing.price.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                              {p.listings.length} seller{p.listings.length > 1 ? 's' : ''}
+                            </span>
                           </div>
-                          <Button
-                            size="sm"
-                            onClick={() => handleAddToCart(p, bestListing)}
-                            loading={cartLoadingId === bestListing.id}
-                          >
-                            <ShoppingCart size={14} /> Add
-                          </Button>
-                        </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={() => handleAddToCart(p, bestListing)}
+                              loading={cartLoadingId === bestListing.id}
+                            >
+                              <ShoppingCart size={14} /> Add
+                            </Button>
+                            <Link to={`/products/${p.id}`} className="w-full">
+                              <Button size="sm" variant="secondary" className="w-full">
+                                <MessageSquare size={14} /> Details
+                              </Button>
+                            </Link>
+                          </div>
+                        </>
                       ) : (
-                        <div className="flex items-center justify-between text-xs text-gray-400">
+                        <div className="flex items-center justify-between gap-2 text-xs text-gray-400">
                           <span>Out of stock</span>
-                          <Link to="/listings" className="text-indigo-500 hover:underline">
-                            Details
+                          <Link to={`/products/${p.id}`}>
+                            <Button size="sm" variant="secondary">
+                              <MessageSquare size={14} /> Details
+                            </Button>
                           </Link>
                         </div>
                       )}

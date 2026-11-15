@@ -23,11 +23,33 @@ import {
   Lock,
   ArrowLeft,
   LogIn,
+  RefreshCw,
+  MapPin,
+  Clock,
+  Truck,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
 const STATUS_OPTIONS = ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELED', 'RETURNED', 'REFUNDED'];
+
+const ORDER_STATUS_BADGE = {
+  PROCESSING: { color: 'yellow', label: 'PROCESSING' },
+  SHIPPED: { color: 'blue', label: 'SHIPPED' },
+  DELIVERED: { color: 'green', label: 'DELIVERED' },
+  CANCELED: { color: 'red', label: 'CANCELED' },
+  RETURNED: { color: 'purple', label: 'RETURNED' },
+  REFUNDED: { color: 'gray', label: 'REFUNDED' },
+};
+
+const ALLOWED_TRANSITIONS = {
+  PROCESSING: ['SHIPPED', 'CANCELED'],
+  SHIPPED: ['DELIVERED', 'RETURNED'],
+  DELIVERED: ['RETURNED', 'REFUNDED'],
+  RETURNED: ['REFUNDED'],
+  CANCELED: [],
+  REFUNDED: [],
+};
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -40,6 +62,9 @@ export default function AdminPage() {
   const [bestBrands, setBestBrands] = useState([]);
   const [brandsByCount, setBrandsByCount] = useState([]);
   const [mostLikedComments, setMostLikedComments] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [selectedOrderFilter, setSelectedOrderFilter] = useState('PROCESSING');
   const [loading, setLoading] = useState({});
   const [forbidden, setForbidden] = useState(false);
 
@@ -47,6 +72,7 @@ export default function AdminPage() {
   const [categoryName, setCategoryName] = useState('');
   const [minAmount, setMinAmount] = useState('');
   const [orderIdStatus, setOrderIdStatus] = useState({ id: '', status: 'SHIPPED' });
+  const [lookupOrderId, setLookupOrderId] = useState('');
   const [commentProductId, setCommentProductId] = useState('');
 
   const load = async (key, fn) => {
@@ -103,16 +129,56 @@ export default function AdminPage() {
     }
   };
 
+  const fetchCategories = () =>
+    load('categories', async () => {
+      const res = await api.get('/admin/categories');
+      setCategories(res.data.categories || []);
+    });
+
   const addCategory = async (e) => {
     e.preventDefault();
+    if (!categoryName.trim()) {
+      return toast.error('Please enter a category name');
+    }
     try {
-      await api.post('/admin/addProductCategory', { categoryName });
+      await api.post('/admin/addProductCategory', { categoryName: categoryName.trim() });
       toast.success('Category added!');
       setCategoryName('');
+      fetchCategories();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed');
     }
   };
+
+  const fetchOrdersByStatus = (statusFilter = selectedOrderFilter) => {
+    setSelectedOrderFilter(statusFilter);
+    load('adminOrders', async () => {
+      const query = statusFilter && statusFilter !== 'ALL' ? `?status=${statusFilter}` : '';
+      const res = await api.get(`/admin/orders${query}`);
+      setAdminOrders(res.data.orders || []);
+    });
+  };
+
+  const handleFindOrderById = (e) => {
+    e.preventDefault();
+    if (!lookupOrderId) {
+      return toast.error('Enter an Order ID to look up');
+    }
+    setSelectedOrderFilter('ID_LOOKUP');
+    load('adminOrders', async () => {
+      const res = await api.get(`/admin/orders/${lookupOrderId}`);
+      setAdminOrders(res.data.order ? [res.data.order] : []);
+    });
+  };
+
+  useEffect(() => {
+    if (authLoading || !user?.admin || !user?.otpVerified) return;
+    if (activeTab === 'catalog') {
+      fetchCategories();
+    } else if (activeTab === 'orders') {
+      fetchOrdersByStatus(selectedOrderFilter === 'ID_LOOKUP' ? 'PROCESSING' : selectedOrderFilter);
+    }
+  }, [activeTab, user, authLoading]);
 
   const fetchUnverified = () =>
     load('unverified', async () => {
@@ -184,9 +250,32 @@ export default function AdminPage() {
       const res = await api.patch(`/admin/orders/${orderIdStatus.id}/status`, {
         status: orderIdStatus.status,
       });
-      toast.success(`Order updated to ${res.data.orderStatus}`);
+      toast.success(`Order #${orderIdStatus.id} updated to ${res.data.orderStatus}`);
+      if (selectedOrderFilter === 'ID_LOOKUP') {
+        const refreshed = await api.get(`/admin/orders/${orderIdStatus.id}`);
+        setAdminOrders(refreshed.data.order ? [refreshed.data.order] : []);
+      } else {
+        fetchOrdersByStatus(selectedOrderFilter);
+      }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed');
+    }
+  };
+
+  const quickTransitionOrder = async (orderId, nextStatus) => {
+    try {
+      const res = await api.patch(`/admin/orders/${orderId}/status`, {
+        status: nextStatus,
+      });
+      toast.success(`Order #${orderId} updated to ${res.data.orderStatus}`);
+      if (selectedOrderFilter === 'ID_LOOKUP') {
+        const refreshed = await api.get(`/admin/orders/${orderId}`);
+        setAdminOrders(refreshed.data.order ? [refreshed.data.order] : []);
+      } else {
+        fetchOrdersByStatus(selectedOrderFilter);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update order status');
     }
   };
 
@@ -259,20 +348,24 @@ export default function AdminPage() {
       </h1>
 
       {/* Tab navigation */}
-      <div className="flex overflow-x-auto gap-1 mb-8 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-              activeTab === tab.id
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            <tab.icon size={16} /> {tab.label}
-          </button>
-        ))}
+      <div className="flex overflow-x-auto gap-2 mb-8 p-2 bg-gray-100/90 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-inner">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all cursor-pointer border ${
+                isActive
+                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/25'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-xs'
+              }`}
+            >
+              <tab.icon size={16} /> {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Seller Requests */}
@@ -487,59 +580,314 @@ export default function AdminPage() {
 
       {/* Catalog */}
       {activeTab === 'catalog' && (
-        <Card className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-            Add Product Category
-          </h2>
-          <form onSubmit={addCategory} className="flex gap-3">
-            <Input
-              value={categoryName}
-              onChange={(e) => setCategoryName(e.target.value)}
-              placeholder="Category name"
-              className="flex-1"
-            />
-            <Button type="submit">
-              <Plus size={16} /> Add
-            </Button>
-          </form>
-        </Card>
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Add Product Category
+            </h2>
+            <form onSubmit={addCategory} className="flex gap-3">
+              <Input
+                value={categoryName}
+                onChange={(e) => setCategoryName(e.target.value)}
+                placeholder="Category name (e.g. laptops, networking, audio)"
+                className="flex-1"
+              />
+              <Button type="submit">
+                <Plus size={16} /> Add Category
+              </Button>
+            </form>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Tag size={18} className="text-indigo-500" /> All Product Categories
+                  <Badge color="indigo">{categories.length}</Badge>
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  View all registered marketplace product categories and their catalog item counts.
+                </p>
+              </div>
+              <Button variant="secondary" size="sm" onClick={fetchCategories}>
+                <RefreshCw size={14} /> See All Categories
+              </Button>
+            </div>
+
+            {loading.categories ? (
+              <LoadingSpinner text="Loading categories..." />
+            ) : categories.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 py-4">
+                No product categories found. Click &ldquo;See All Categories&rdquo; or add a new category above.
+              </p>
+            ) : (
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {categories.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/60 border border-gray-200/70 dark:border-gray-700/60 rounded-xl"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 block">
+                        ID #{cat.id}
+                      </span>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white capitalize truncate">
+                        {cat.categoryName}
+                      </p>
+                    </div>
+                    <Badge color="gray">{cat.productCount ?? 0} products</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
       )}
 
       {/* Orders */}
       {activeTab === 'orders' && (
-        <Card className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
-            Change Order Status
-          </h2>
-          <form onSubmit={changeOrderStatus} className="space-y-4">
-            <Input
-              label="Order ID"
-              type="number"
-              value={orderIdStatus.id}
-              onChange={(e) => setOrderIdStatus((f) => ({ ...f, id: e.target.value }))}
-              placeholder="Order ID"
-            />
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                New Status
-              </label>
-              <select
-                value={orderIdStatus.status}
-                onChange={(e) => setOrderIdStatus((f) => ({ ...f, status: e.target.value }))}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+        <div className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="p-6">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                Find Order by ID
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Look up a specific order directly by its numeric Order ID.
+              </p>
+              <form onSubmit={handleFindOrderById} className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <Input
+                    label="Order ID"
+                    type="number"
+                    value={lookupOrderId}
+                    onChange={(e) => setLookupOrderId(e.target.value)}
+                    placeholder="e.g. 1"
+                  />
+                </div>
+                <Button type="submit" variant="secondary">
+                  <Search size={16} /> Find Order
+                </Button>
+              </form>
+            </Card>
+
+            <Card className="p-6">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                Change Order Status by ID
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Transition an order to its next fulfillment stage.
+              </p>
+              <form onSubmit={changeOrderStatus} className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Order ID"
+                    type="number"
+                    value={orderIdStatus.id}
+                    onChange={(e) => setOrderIdStatus((f) => ({ ...f, id: e.target.value }))}
+                    placeholder="Order ID"
+                  />
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      New Status
+                    </label>
+                    <select
+                      value={orderIdStatus.status}
+                      onChange={(e) => setOrderIdStatus((f) => ({ ...f, status: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    >
+                      {STATUS_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <Button type="submit">
+                  <Package size={16} /> Update Status
+                </Button>
+              </form>
+            </Card>
+          </div>
+
+          <Card className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Package size={18} className="text-indigo-500" /> Browse Orders by Status Condition
+                  <Badge color="indigo">{adminOrders.length}</Badge>
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Filter marketplace orders by fulfillment stage or view all orders across the platform.
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  fetchOrdersByStatus(
+                    selectedOrderFilter === 'ID_LOOKUP' ? 'ALL' : selectedOrderFilter
+                  )
+                }
               >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                <RefreshCw size={14} /> Refresh
+              </Button>
             </div>
-            <Button type="submit">
-              <Package size={16} /> Update Status
-            </Button>
-          </form>
-        </Card>
+
+            {/* Condition Filter Buttons */}
+            <div className="flex flex-wrap gap-2.5 mb-6">
+              <button
+                type="button"
+                onClick={() => fetchOrdersByStatus('ALL')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border active:scale-[0.98] ${
+                  selectedOrderFilter === 'ALL'
+                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/25'
+                    : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-indigo-400 shadow-xs'
+                }`}
+              >
+                All Orders
+              </button>
+              {STATUS_OPTIONS.map((status) => {
+                const active = selectedOrderFilter === status;
+                return (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => fetchOrdersByStatus(status)}
+                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border active:scale-[0.98] ${
+                      active
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-500/25'
+                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-indigo-400 shadow-xs'
+                    }`}
+                  >
+                    All {status.charAt(0) + status.slice(1).toLowerCase()}
+                  </button>
+                );
+              })}
+            </div>
+
+            {loading.adminOrders ? (
+              <LoadingSpinner text="Loading orders..." />
+            ) : adminOrders.length === 0 ? (
+              <div className="text-center py-10 bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                <Package size={28} className="mx-auto text-gray-400 mb-2" />
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  No orders found for{' '}
+                  <span className="font-bold">
+                    {selectedOrderFilter === 'ALL'
+                      ? 'any status'
+                      : selectedOrderFilter === 'ID_LOOKUP'
+                        ? `Order #${lookupOrderId}`
+                        : selectedOrderFilter}
+                  </span>
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {adminOrders.map((ord) => {
+                  const badgeCfg = ORDER_STATUS_BADGE[ord.orderStatus] || {
+                    color: 'gray',
+                    label: ord.orderStatus,
+                  };
+                  const nextStages = ALLOWED_TRANSITIONS[ord.orderStatus] || [];
+
+                  return (
+                    <div
+                      key={ord.id}
+                      className="p-5 bg-gray-50 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700/70 rounded-2xl space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="text-base font-bold text-gray-900 dark:text-white">
+                              Order #{ord.id}
+                            </span>
+                            <Badge color={badgeCfg.color}>{badgeCfg.label}</Badge>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(ord.orderDate).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                            Customer:{' '}
+                            <span className="font-semibold">{ord.client?.userName}</span>
+                            {ord.client?.email ? ` · ${ord.client.email}` : ''}
+                            {ord.client?.phoneNumber ? ` · ${ord.client.phoneNumber}` : ''}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {nextStages.map((nextStage) => (
+                            <Button
+                              key={nextStage}
+                              size="sm"
+                              variant={nextStage === 'CANCELED' ? 'danger' : 'secondary'}
+                              onClick={() => quickTransitionOrder(ord.id, nextStage)}
+                            >
+                              Mark {nextStage}
+                            </Button>
+                          ))}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              setOrderIdStatus({
+                                id: String(ord.id),
+                                status: nextStages[0] || ord.orderStatus,
+                              })
+                            }
+                          >
+                            Select #{ord.id}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {ord.items && ord.items.length > 0 && (
+                        <div className="space-y-2">
+                          {ord.items.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between px-3.5 py-2.5 bg-white dark:bg-gray-900/60 rounded-xl text-xs"
+                            >
+                              <div className="min-w-0">
+                                <span className="font-semibold text-gray-900 dark:text-white capitalize">
+                                  {item.productName}
+                                </span>
+                                <span className="text-gray-500 dark:text-gray-400 ml-2">
+                                  ({item.storeName}) · Qty: {item.quantity} × $
+                                  {item.unitPrice?.toLocaleString()}
+                                </span>
+                              </div>
+                              <span className="font-bold text-gray-900 dark:text-white">
+                                ${item.lineTotal?.toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-gray-200 dark:border-gray-700/80 text-xs">
+                        <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                          <MapPin size={13} className="flex-shrink-0 text-indigo-500" />
+                          <span>
+                            {ord.address} ({ord.postalCode})
+                          </span>
+                        </div>
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">
+                          Total: ${ord.totalAmount?.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
       )}
 
       {/* Analytics */}

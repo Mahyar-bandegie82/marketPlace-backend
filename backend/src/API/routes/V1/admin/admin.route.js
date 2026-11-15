@@ -10,6 +10,7 @@ import {
     limitQuerySchema,
     idParamSchema,
     productIdParamSchema,
+    adminOrderQuerySchema,
 } from "../../../../validation/admin/admin.validation.js";
 import { attachAbility, authorize } from "../../../middleware/casl.authorization.js";
 import {
@@ -65,6 +66,12 @@ router.post('/addProductCategory', authorize('manage', 'ProductCategory'), async
     return res.status(200).json({ message: 'ProductCategory added successfully', productCategory });
 });
 
+// Retrieve all product categories
+router.get('/categories', authorize('manage', 'ProductCategory'), async (req, res) => {
+    const categories = await adminService.getAllCategories();
+    return res.status(200).json({ categories });
+});
+
 // Fetch paginated list of users who have not completed OTP verification
 router.get('/users/unverified', authorize('read', 'User'), async (req, res) => {
     const { page, limit } = await joiValidator(paginationQuerySchema, req.query);
@@ -102,6 +109,20 @@ router.get('/analytics/brands/best-selling', authorize('read', 'Product'), async
 router.get('/analytics/brands/by-product-count', authorize('read', 'Product'), async (req, res) => {
     const { limit } = await joiValidator(limitQuerySchema, req.query);
     res.json(await adminService.getBrandsByProductCount(limit));
+});
+
+// Retrieve all orders optionally filtered by status condition
+router.get('/orders', authorize('read', 'Order'), async (req, res) => {
+    const { status } = await joiValidator(adminOrderQuerySchema, req.query);
+    const orders = await adminService.getAdminOrders(status);
+    res.json({ orders });
+});
+
+// Retrieve a specific order by ID
+router.get('/orders/:id', authorize('read', 'Order'), async (req, res) => {
+    const { id } = await joiValidator(idParamSchema, req.params);
+    const order = await adminService.getAdminOrderById(id);
+    res.json({ order });
 });
 
 // Update the fulfillment status of an order

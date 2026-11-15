@@ -17,6 +17,7 @@ import {
     addToInventory,
     deleteListing, getAllListing, getListing,
     sellerSignUp,
+    getSellerStatus,
     updateListing,
     addListingToPromotion,
     deleteListingfromPromotion,
@@ -35,6 +36,16 @@ const router = express.Router();
 router.use(accessVerification);
 router.use(attachAbility);
 
+// Retrieve current user's seller application and admin verification status
+router.get('/status', async (req, res) => {
+    const seller = await getSellerStatus(req.id);
+    return res.status(200).json({
+        isSeller: Boolean(seller),
+        isVerified: Boolean(seller?.verified),
+        seller,
+    });
+});
+
 // Submit a new seller registration application
 router.post('/sellerSignUp', authorize('create', 'Seller'), async (req, res) => {
     if (!req.body) throw createError(405, "body is missing");
@@ -49,6 +60,7 @@ router.post('/addListing', authorize('create', 'SellerInventory'), async (req, r
     const body = await joiValidator(addInventorySchema, req.body);
     const sellerId = req.user.seller?.id;
     if (!sellerId) throw createError(403, "only sellers can add inventory");
+    if (!req.user.seller?.verified) throw createError(403, "your seller request has not been verified by an admin yet");
 
     const listing = await addToInventory(sellerId, body);
     return res.status(201).json({
@@ -62,6 +74,7 @@ router.delete('/deleteListing/:listingId', authorize('delete', 'SellerInventory'
     const params = await joiValidator(ListingIdSchema, req.params);
     const sellerId = req.user.seller?.id;
     if (!sellerId) throw createError(403, "only sellers can remove listings");
+    if (!req.user.seller?.verified) throw createError(403, "your seller request has not been verified by an admin yet");
 
     const listingId = Number(params.listingId);
     if (!Number.isInteger(listingId) || listingId <= 0) {
@@ -76,12 +89,13 @@ router.delete('/deleteListing/:listingId', authorize('delete', 'SellerInventory'
 router.put('/updateListing/:listingId', authorize('update', 'SellerInventory'), async (req, res) => {
     const sellerId = req.user.seller?.id;
     if (!sellerId) throw createError(403, "only sellers can update inventory");
+    if (!req.user.seller?.verified) throw createError(403, "your seller request has not been verified by an admin yet");
     const params = await joiValidator(ListingIdSchema, req.params);
     const listingId = Number(params.listingId);
     if (!Number.isInteger(listingId) || listingId <= 0) {
         throw createError(400, "invalid listing id");
     }
-    const body = req.body;
+    const body = await joiValidator(updateListingSchema, req.body);
     const updatedListing = await updateListing(listingId, sellerId, body);
     res.status(200).json({ message: "Updated successfully", updatedListing });
 });
@@ -90,6 +104,7 @@ router.put('/updateListing/:listingId', authorize('update', 'SellerInventory'), 
 router.get('/getAllSellerInventory', authorize('read', 'SellerInventory'), async (req, res) => {
     const sellerId = req.user.seller?.id;
     if (!sellerId) throw createError(403, "only sellers can read inventory");
+    if (!req.user.seller?.verified) throw createError(403, "your seller request has not been verified by an admin yet");
     const listings = await getAllListing(sellerId);
     return res.status(200).json({ listings });
 });
@@ -99,6 +114,7 @@ router.get('/getSellerInventory/:listingId', authorize('read', 'SellerInventory'
     const params = await joiValidator(ListingIdSchema, req.params);
     const sellerId = req.user.seller?.id;
     if (!sellerId) throw createError(403, "only sellers can read inventory");
+    if (!req.user.seller?.verified) throw createError(403, "your seller request has not been verified by an admin yet");
     const listingId = Number(req.params.listingId);
     if (!Number.isInteger(listingId) || listingId <= 0) {
         throw createError(400, "invalid listing id");

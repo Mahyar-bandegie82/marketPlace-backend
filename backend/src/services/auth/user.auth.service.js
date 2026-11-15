@@ -39,7 +39,7 @@ export async function signUp(json) {
             },
             include: {
                 admin: { select: { id: true } },
-                seller: { select: { id: true, verified: true, storeName: true } },
+                seller: { select: { id: true, verified: true, trusted: true, storeName: true } },
                 client: { select: { id: true } }
             }
         });
@@ -93,7 +93,7 @@ export async function markOtpVerified(userId) {
         data: { otpVerified: true },
         include: {
             admin: { select: { id: true } },
-            seller: { select: { id: true, verified: true, storeName: true } },
+            seller: { select: { id: true, verified: true, trusted: true, storeName: true } },
             client: { select: { id: true } },
         },
     });

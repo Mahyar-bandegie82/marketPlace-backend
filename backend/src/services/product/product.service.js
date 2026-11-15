@@ -187,9 +187,11 @@ export async function getProductById(id) {
                     images: true,
                     videos: true,
                     createdAt: true,
+                    clientId: true,
                     client: {
                         select: {
-                            user: { select: { userName: true } }
+                            id: true,
+                            user: { select: { id: true, userName: true } }
                         }
                     }
                 },

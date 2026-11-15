@@ -49,7 +49,7 @@ router.get('/me', async (req, res) => {
             dateCreated: true,
             admin: { select: { id: true } },
             client: { select: { id: true } },
-            seller: { select: { id: true, verified: true, storeName: true } },
+            seller: { select: { id: true, verified: true, trusted: true, storeName: true } },
         }
     });
     if (!user) throw createError(404, "user not found");

@@ -62,6 +62,25 @@ export async function addcategory(body) {
     });
 }
 
+// Retrieve all product categories with product counts
+export async function getAllCategories() {
+    const categories = await prisma.productCategory.findMany({
+        orderBy: { id: 'asc' },
+        select: {
+            id: true,
+            categoryName: true,
+            _count: {
+                select: { product: true },
+            },
+        },
+    });
+    return categories.map(({ id, categoryName, _count }) => ({
+        id,
+        categoryName,
+        productCount: _count?.product ?? 0,
+    }));
+}
+
 // Update the status of an order
 export async function updateorderStatus(orderId, status) {
     const order = await prisma.order.update({
@@ -153,6 +172,7 @@ export async function getAlltrustedSelers() {
     const trustedSellers = await prisma.seller.findMany({
         where: { trusted: true },
         select: {
+            id: true,
             storeName: true,
             trusted: true,
             user: {
@@ -168,6 +188,8 @@ export async function getAlltrustedSelers() {
         ...user
     }));
 }
+
+export const getAllTrustedSellers = getAlltrustedSelers;
 
 // Calculate best-selling brands ranked by unit sales and revenue
 export async function getBestSellingBrands(limit = 10) {
@@ -232,6 +254,97 @@ export async function changeOrderStatus(orderId, newStatus) {
         where: { id: orderId },
         select: { id: true, orderStatus: true, deliveredAt: true }
     });
+}
+
+const adminOrderSelect = {
+    id: true,
+    orderStatus: true,
+    orderDate: true,
+    paidAt: true,
+    deliveredAt: true,
+    address: true,
+    postalCode: true,
+    client: {
+        select: {
+            id: true,
+            user: {
+                select: {
+                    id: true,
+                    userName: true,
+                    email: true,
+                    phoneNumber: true,
+                },
+            },
+        },
+    },
+    orderItems: {
+        select: {
+            listingId: true,
+            quantity: true,
+            unitPrice: true,
+            listing: {
+                select: {
+                    condition: true,
+                    product: { select: { productName: true, brand: true, model: true } },
+                    seller: { select: { storeName: true } },
+                },
+            },
+        },
+    },
+};
+
+function formatAdminOrder(order) {
+    const items = (order.orderItems || []).map((item) => ({
+        listingId: item.listingId,
+        productName: item.listing?.product?.productName || 'Product',
+        brand: item.listing?.product?.brand || '',
+        model: item.listing?.product?.model || '',
+        condition: item.listing?.condition || 'NEW',
+        storeName: item.listing?.seller?.storeName || 'Store',
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        lineTotal: item.quantity * item.unitPrice,
+    }));
+
+    return {
+        id: order.id,
+        orderStatus: order.orderStatus,
+        orderDate: order.orderDate,
+        paidAt: order.paidAt,
+        deliveredAt: order.deliveredAt,
+        address: order.address,
+        postalCode: order.postalCode,
+        client: {
+            clientId: order.client?.id,
+            userId: order.client?.user?.id,
+            userName: order.client?.user?.userName || 'Unknown',
+            email: order.client?.user?.email || '',
+            phoneNumber: order.client?.user?.phoneNumber || '',
+        },
+        items,
+        totalAmount: items.reduce((sum, i) => sum + i.lineTotal, 0),
+    };
+}
+
+// Retrieve all orders for admin optionally filtered by OrderStatus
+export async function getAdminOrders(status) {
+    const where = status ? { orderStatus: status } : {};
+    const orders = await prisma.order.findMany({
+        where,
+        orderBy: { orderDate: 'desc' },
+        select: adminOrderSelect,
+    });
+    return orders.map(formatAdminOrder);
+}
+
+// Retrieve a single order by ID for admin inspection
+export async function getAdminOrderById(orderId) {
+    const order = await prisma.order.findUnique({
+        where: { id: Number(orderId) },
+        select: adminOrderSelect,
+    });
+    if (!order) throw createError(404, 'Order not found');
+    return formatAdminOrder(order);
 }
 
 // Retrieve most-liked comments across all products

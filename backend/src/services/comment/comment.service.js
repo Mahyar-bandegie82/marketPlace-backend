@@ -138,9 +138,12 @@ export async function getComments(clientId) {
             id: true,
             productId: true,
             rating: true,
+            like: true,
+            dislike: true,
             massage: true,
             images: true,
             videos: true,
+            createdAt: true,
             product: { select: {
                 productName: true,
                 rating: true,
@@ -148,4 +151,30 @@ export async function getComments(clientId) {
         }
     });
     return comments;
+}
+
+// Increment like or dislike counter on a product comment
+export async function reactToComment(commentId, type) {
+    const existing = await prisma.comment.findUnique({
+        where: { id: Number(commentId) },
+        select: { id: true },
+    });
+    if (!existing) throw createError(404, "Comment not found");
+
+    const data = type === 'like'
+        ? { like: { increment: 1 } }
+        : { dislike: { increment: 1 } };
+
+    return await prisma.comment.update({
+        where: { id: Number(commentId) },
+        data,
+        select: {
+            id: true,
+            like: true,
+            dislike: true,
+            rating: true,
+            massage: true,
+            productId: true,
+        },
+    });
 }

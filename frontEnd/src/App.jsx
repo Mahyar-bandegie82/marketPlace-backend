@@ -13,6 +13,7 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import SellerPage from './pages/SellerPage.jsx';
 import CommentsPage from './pages/CommentsPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import ProductDetailPage from './pages/ProductDetailPage.jsx';
 
 export default function App() {
   return (
@@ -20,7 +21,9 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="listings" element={<ListingsPage />} />
+        <Route path="listings/:id" element={<ProductDetailPage />} />
         <Route path="products" element={<ListingsPage />} />
+        <Route path="products/:id" element={<ProductDetailPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
         <Route path="cart" element={<CartPage />} />

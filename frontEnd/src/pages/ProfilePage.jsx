@@ -15,12 +15,18 @@ import {
   CheckCircle2,
   LogIn,
   UserPlus,
+  Store,
+  Clock,
+  RefreshCw,
+  Crown,
+  ArrowRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
 export default function ProfilePage() {
-  const { user, loading: authLoading, updateUser } = useAuth();
+  const { user, loading: authLoading, updateUser, fetchProfile } = useAuth();
+  const [refreshingSeller, setRefreshingSeller] = useState(false);
   const [editForm, setEditForm] = useState({ phoneNumber: '', changes: {} });
   const [editing, setEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -238,16 +244,29 @@ export default function ProfilePage() {
             {(user?.userName || 'U').charAt(0).toUpperCase()}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 {user?.userName || 'User'}
               </h1>
               {user?.otpVerified ? (
                 <Badge color="green">
-                  <CheckCircle2 size={12} className="mr-1" /> Verified
+                  <CheckCircle2 size={12} className="mr-1" /> Email Verified
                 </Badge>
               ) : (
-                <Badge color="yellow">Unverified</Badge>
+                <Badge color="yellow">Email Unverified</Badge>
+              )}
+              {user?.seller ? (
+                user.seller.verified ? (
+                  <Badge color="green">
+                    <Store size={12} className="mr-1" /> Seller (Verified by Admin)
+                  </Badge>
+                ) : (
+                  <Badge color="yellow">
+                    <Clock size={12} className="mr-1" /> Seller Request Pending
+                  </Badge>
+                )
+              ) : (
+                <Badge color="gray">Standard Buyer</Badge>
               )}
             </div>
             <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{user?.email || ''}</p>
@@ -318,6 +337,113 @@ export default function ProfilePage() {
               </Button>
             </div>
           </form>
+        )}
+      </Card>
+
+      {/* Seller Application & Admin Verification Status Section */}
+      <Card className="p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Store className="text-emerald-500" size={20} /> Seller Status & Admin Verification
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Check whether your account is registered as a seller and whether an administrator has accepted your seller request.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={refreshingSeller}
+            onClick={async () => {
+              setRefreshingSeller(true);
+              try {
+                const updated = await fetchProfile();
+                if (updated?.seller?.verified) {
+                  toast.success('Your seller account is verified by the admin!');
+                } else if (updated?.seller) {
+                  toast('Your seller request is still awaiting admin approval.');
+                } else {
+                  toast('You have not submitted a seller application yet.');
+                }
+              } finally {
+                setRefreshingSeller(false);
+              }
+            }}
+          >
+            <RefreshCw size={14} /> Refresh Status
+          </Button>
+        </div>
+
+        {!user?.seller ? (
+          <div className="p-5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                  Account Seller Status:
+                </span>
+                <Badge color="gray">Not a Seller</Badge>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                You have not submitted a seller request yet. Apply with a store name to start listing products on the marketplace once approved by an administrator.
+              </p>
+            </div>
+            <Link to="/seller" className="flex-shrink-0">
+              <Button size="sm">
+                <Store size={15} /> Apply to Become a Seller
+              </Button>
+            </Link>
+          </div>
+        ) : user.seller.verified ? (
+          <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge color="green">
+                    <CheckCircle2 size={12} className="mr-1" /> Seller Request Accepted
+                  </Badge>
+                  <Badge color="blue">Verified by Admin</Badge>
+                  {user.seller.trusted && (
+                    <Badge color="indigo">
+                      <Crown size={12} className="mr-1" /> Trusted Store
+                    </Badge>
+                  )}
+                </div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white pt-1">
+                  Store: {user.seller.storeName}{' '}
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                    (Seller ID #{user.seller.id})
+                  </span>
+                </h3>
+                <p className="text-xs text-emerald-800 dark:text-emerald-200/90 leading-relaxed">
+                  Your seller profile has been verified and approved by an administrator. You have full access to list products, manage inventory, and run store promotions.
+                </p>
+              </div>
+              <Link to="/seller" className="flex-shrink-0">
+                <Button variant="success" size="sm">
+                  Open Seller Panel <ArrowRight size={15} />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="p-5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge color="yellow">
+                <Clock size={12} className="mr-1" /> Pending Admin Verification
+              </Badge>
+              <Badge color="gray">Registered Seller Applicant</Badge>
+            </div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Store Application: {user.seller.storeName}{' '}
+              <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                (Seller ID #{user.seller.id})
+              </span>
+            </h3>
+            <p className="text-xs text-amber-800 dark:text-amber-200/90 leading-relaxed">
+              Your seller registration request has been submitted, but it is <strong>not verified by an administrator yet</strong>. Once an admin approves your request in the Admin Panel, your status here will change to <strong>Verified by Admin</strong> and you will be able to add products and manage your inventory.
+            </p>
+          </div>
         )}
       </Card>
 

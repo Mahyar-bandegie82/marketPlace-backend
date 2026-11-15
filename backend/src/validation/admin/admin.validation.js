@@ -43,3 +43,7 @@ export const idParamSchema = Joi.object({
 export const productIdParamSchema = Joi.object({
     productId: Joi.number().integer().positive().required(),
 });
+
+export const adminOrderQuerySchema = Joi.object({
+    status: Joi.string().valid('PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELED', 'RETURNED', 'REFUNDED'),
+});

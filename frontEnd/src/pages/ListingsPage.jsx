@@ -12,13 +12,13 @@ import {
   Tag,
   Filter,
   Package,
-  X,
   ArrowUpDown,
   Layers,
-  Info,
+  MessageSquare,
+  ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 export default function ListingsPage() {
   const { user } = useAuth();
@@ -38,9 +38,6 @@ export default function ListingsPage() {
   // Action Loading
   const [cartLoadingId, setCartLoadingId] = useState(null);
   const [favLoadingId, setFavLoadingId] = useState(null);
-
-  // Detail Modal
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Sync URL search param changes (e.g. from Navbar search)
   useEffect(() => {
@@ -153,23 +150,25 @@ export default function ListingsPage() {
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl w-fit">
+        <div className="flex items-center gap-2 p-1.5 bg-gray-100 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-xl w-fit shadow-inner">
           <button
+            type="button"
             onClick={() => setViewMode('products')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
               viewMode === 'products'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-500/25'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-xs'
             }`}
           >
             <Package size={14} /> By Products ({products.length})
           </button>
           <button
+            type="button"
             onClick={() => setViewMode('listings')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer border ${
               viewMode === 'listings'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900'
+                ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-500/25'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-xs'
             }`}
           >
             <Layers size={14} /> By Seller Listings ({allListings.length})
@@ -208,25 +207,27 @@ export default function ListingsPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-gray-200 dark:border-gray-800">
           {/* Category Badges */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1 mr-1">
               <Filter size={12} /> Category:
             </span>
             <button
+              type="button"
               onClick={() => {
                 setSelectedCategory('');
                 setSearchParams(search ? { search } : {});
               }}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
                 selectedCategory === ''
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-500/25'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-indigo-400 shadow-xs'
               }`}
             >
               All
             </button>
             {categories.map((c) => (
               <button
+                type="button"
                 key={c.id || c.categoryName}
                 onClick={() => {
                   const next = selectedCategory === c.categoryName ? '' : c.categoryName;
@@ -236,10 +237,10 @@ export default function ListingsPage() {
                   if (next) params.category = next;
                   setSearchParams(params);
                 }}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer capitalize border ${
                   selectedCategory === c.categoryName
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm shadow-indigo-500/25'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-indigo-400 shadow-xs'
                 }`}
               >
                 {c.categoryName}
@@ -358,30 +359,42 @@ export default function ListingsPage() {
                         <span className="font-semibold uppercase tracking-wider">{p.brand}</span>
                         <span>Model: {p.model}</span>
                       </div>
-                      <h3 className="font-bold text-base text-gray-900 dark:text-white capitalize group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
-                        {p.productName}
-                      </h3>
+                      <Link to={`/products/${p.id}`}>
+                        <h3 className="font-bold text-base text-gray-900 dark:text-white capitalize group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-1">
+                          {p.productName}
+                        </h3>
+                      </Link>
                       <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">
                         {p.description}
                       </p>
 
                       {/* Rating & Categories */}
-                      <div className="flex items-center gap-2 mt-2.5">
+                      <div className="flex items-center flex-wrap gap-2 mt-2.5">
                         <div className="flex items-center gap-1 text-xs font-semibold text-amber-500">
                           <Star size={13} className="fill-amber-400" />
-                          <span>{(p.rating || 0).toFixed(1)}</span>
+                          <span>
+                            {p.rating > 0 ? `${Number(p.rating).toFixed(1)}/100` : 'Unrated'}
+                          </span>
                         </div>
                         <span className="text-gray-300 dark:text-gray-700">·</span>
-                        <div className="flex flex-wrap gap-1">
-                          {p.categories?.slice(0, 2).map((cat, i) => (
-                            <span
-                              key={i}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-                            >
-                              {cat.categoryName}
-                            </span>
-                          ))}
-                        </div>
+                        <span className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <MessageSquare size={11} /> {p.comments?.length || 0}
+                        </span>
+                        {p.categories?.length > 0 && (
+                          <>
+                            <span className="text-gray-300 dark:text-gray-700">·</span>
+                            <div className="flex flex-wrap gap-1">
+                              {p.categories?.slice(0, 2).map((cat, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                                >
+                                  {cat.categoryName}
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -405,30 +418,30 @@ export default function ListingsPage() {
                             </span>
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="grid grid-cols-2 gap-2">
                             <Button
                               size="sm"
-                              className="flex-1"
+                              className="w-full"
                               onClick={() => handleAddToCart(bestListing, p)}
                               loading={cartLoadingId === bestListing.id}
                             >
                               <ShoppingCart size={14} /> Add to Cart
                             </Button>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => setSelectedProduct(p)}
-                            >
-                              <Info size={14} />
-                            </Button>
+                            <Link to={`/products/${p.id}`} className="w-full">
+                              <Button size="sm" variant="secondary" className="w-full">
+                                <MessageSquare size={14} /> Details
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between text-xs text-gray-400 py-1">
+                        <div className="flex items-center justify-between gap-2 text-xs text-gray-400 py-1">
                           <span>Currently Out of Stock</span>
-                          <Button size="sm" variant="ghost" onClick={() => setSelectedProduct(p)}>
-                            Details
-                          </Button>
+                          <Link to={`/products/${p.id}`}>
+                            <Button size="sm" variant="secondary">
+                              <MessageSquare size={14} /> Details & Reviews
+                            </Button>
+                          </Link>
                         </div>
                       )}
                     </div>
@@ -465,10 +478,12 @@ export default function ListingsPage() {
                   )}
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-gray-900 dark:text-white capitalize">
-                      {listing.product.productName}
-                    </h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link to={`/products/${listing.product.id}`}>
+                      <h3 className="font-bold text-gray-900 dark:text-white capitalize hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                        {listing.product.productName}
+                      </h3>
+                    </Link>
                     <Badge
                       color={
                         listing.condition === 'NEW'
@@ -482,18 +497,26 @@ export default function ListingsPage() {
                     </Badge>
                     <span className="text-xs text-gray-400">Listing #{listing.id}</span>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Store:{' '}
-                    <strong className="text-gray-700 dark:text-gray-200">
-                      {listing.seller?.storeName || 'Verified Store'}
-                    </strong>
-                    {listing.seller?.trusted && (
-                      <span className="ml-2 inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-                        <ShieldCheck size={12} /> Trusted
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center flex-wrap gap-1.5">
+                    <span>
+                      Store:{' '}
+                      <strong className="text-gray-700 dark:text-gray-200">
+                        {listing.seller?.storeName || 'Verified Store'}
+                      </strong>
+                    </span>
+                    {listing.seller?.trusted ? (
+                      <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <ShieldCheck size={12} /> Trusted Seller
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 dark:text-gray-500">
+                        (Standard Seller)
                       </span>
                     )}
-                    <span className="mx-2">·</span>
-                    Available Quantity: <strong>{listing.quantity}</strong>
+                    <span>·</span>
+                    <span>
+                      Available Quantity: <strong>{listing.quantity}</strong>
+                    </span>
                   </p>
                 </div>
               </div>
@@ -518,129 +541,15 @@ export default function ListingsPage() {
                   >
                     <ShoppingCart size={14} /> Add to Cart
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setSelectedProduct(listing.product)}
-                  >
-                    Info
-                  </Button>
+                  <Link to={`/products/${listing.product.id}`}>
+                    <Button size="sm" variant="secondary">
+                      <ExternalLink size={14} /> Product Page
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </Card>
           ))}
-        </div>
-      )}
-
-      {/* Product Detail Modal */}
-      {selectedProduct && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-fade-in"
-          onClick={() => setSelectedProduct(null)}
-        >
-          <Card
-            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between pb-4 border-b border-gray-200 dark:border-gray-800">
-              <div>
-                <span className="text-xs uppercase font-bold text-indigo-600 dark:text-indigo-400">
-                  {selectedProduct.brand} · {selectedProduct.model}
-                </span>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white capitalize">
-                  {selectedProduct.productName}
-                </h2>
-              </div>
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              {selectedProduct.description}
-            </p>
-
-            {/* Seller Offers */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
-                Seller Inventory Offers ({selectedProduct.listings?.length || 0})
-              </h3>
-              <div className="space-y-2">
-                {selectedProduct.listings?.map((l) => (
-                  <div
-                    key={l.id}
-                    className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-gray-900 dark:text-white">
-                          {l.seller?.storeName || 'Official Seller'}
-                        </span>
-                        <Badge
-                          color={
-                            l.condition === 'NEW'
-                              ? 'green'
-                              : l.condition === 'BARELY_USED'
-                              ? 'blue'
-                              : 'yellow'
-                          }
-                        >
-                          {l.condition.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Stock: {l.quantity} units · Listing #{l.id}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-base font-bold text-gray-900 dark:text-white">
-                        ${(l.discountedPrice || l.price).toLocaleString()}
-                      </span>
-                      <Button
-                        size="sm"
-                        onClick={() => handleAddToCart(l, selectedProduct)}
-                        loading={cartLoadingId === l.id}
-                      >
-                        <ShoppingCart size={14} /> Add
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Reviews */}
-            {selectedProduct.comments?.length > 0 && (
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-3">
-                  Customer Reviews ({selectedProduct.comments.length})
-                </h3>
-                <div className="space-y-3">
-                  {selectedProduct.comments.map((c) => (
-                    <div
-                      key={c.id}
-                      className="p-3 bg-gray-50 dark:bg-gray-800/40 rounded-xl text-xs space-y-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {c.client?.user?.userName || 'Customer'}
-                        </span>
-                        <div className="flex items-center gap-1 text-amber-500 font-bold">
-                          <Star size={12} className="fill-amber-400" />
-                          <span>{c.rating}/100</span>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 dark:text-gray-300">{c.massage}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </Card>
         </div>
       )}
     </div>

@@ -19,3 +19,11 @@ export const updateCommentSchema = Joi.object({
     images: Joi.array().items(Joi.string().uri()),
     videos: Joi.array().items(Joi.string().uri()),
 }).or('rating', 'massage', 'images', 'videos').required();
+
+export const CommentIdSchema = Joi.object({
+    commentId: Joi.number().integer().positive().required(),
+}).required();
+
+export const reactCommentSchema = Joi.object({
+    type: Joi.string().valid('like', 'dislike').required(),
+}).required();

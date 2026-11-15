@@ -132,6 +132,11 @@ export default function FavouritesPage() {
                   </div>
                 )}
                 <div className="flex items-center gap-2 mt-4">
+                  <Link to={`/products/${product.id}`} className="flex-1">
+                    <Button variant="secondary" size="sm" className="w-full">
+                      View Details & Reviews
+                    </Button>
+                  </Link>
                   <Button
                     variant="danger"
                     size="sm"

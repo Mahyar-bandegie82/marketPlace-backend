@@ -3,8 +3,8 @@ import { accessVerification, optionalAccessVerification } from "../../../middlew
 import { attachAbility, authorize } from "../../../middleware/casl.authorization.js";
 import createError from "http-errors";
 import { joiValidator } from "../../../../helper/helper.js";
-import { createCommentSchema, updateCommentSchema, ProductIdSchema } from "../../../../validation/comment/comment.validation.js";
-import { createComment, updateComment, deleteComment, getComments } from "../../../../services/comment/comment.service.js";
+import { createCommentSchema, updateCommentSchema, ProductIdSchema, CommentIdSchema, reactCommentSchema } from "../../../../validation/comment/comment.validation.js";
+import { createComment, updateComment, deleteComment, getComments, reactToComment } from "../../../../services/comment/comment.service.js";
 
 const router = express.Router();
 
@@ -40,6 +40,14 @@ router.delete('/deleteComment/:productId', authorize('delete', 'Comment'), async
     const { productId } = await joiValidator(ProductIdSchema, req.params);
     await deleteComment(req.user.client.id, productId);
     return res.status(200).json({ message: "comment deleted" });
+});
+
+// React (like or dislike) to a comment
+router.post('/react/:commentId', authorize('react', 'Comment'), async (req, res) => {
+    const { commentId } = await joiValidator(CommentIdSchema, req.params);
+    const { type } = await joiValidator(reactCommentSchema, req.body);
+    const comment = await reactToComment(commentId, type);
+    return res.status(200).json({ message: `comment ${type}d`, comment });
 });
 
 export default router;

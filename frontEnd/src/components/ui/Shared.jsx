@@ -36,22 +36,34 @@ export function Card({ children, className = '' }) {
 }
 
 export function Button({ children, variant = 'primary', size = 'md', loading = false, className = '', ...props }) {
-  const base = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900';
+  const base =
+    'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 cursor-pointer select-none active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900';
   const variants = {
-    primary: 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700 shadow-md shadow-indigo-500/25 focus:ring-indigo-500',
-    secondary: 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 focus:ring-gray-500',
-    danger: 'bg-red-500 text-white hover:bg-red-600 shadow-md shadow-red-500/25 focus:ring-red-500',
-    ghost: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-gray-500',
-    outline: 'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 focus:ring-indigo-500',
+    primary:
+      'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border border-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/30 focus:ring-indigo-500',
+    secondary:
+      'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 dark:hover:bg-gray-700 dark:hover:text-white dark:hover:border-indigo-500/50 shadow-sm hover:shadow focus:ring-indigo-500',
+    danger:
+      'bg-gradient-to-r from-red-500 to-rose-600 text-white border border-red-500/40 hover:from-red-600 hover:to-rose-700 shadow-md shadow-red-500/25 hover:shadow-lg hover:shadow-red-500/30 focus:ring-red-500',
+    success:
+      'bg-gradient-to-r from-emerald-500 to-teal-600 text-white border border-emerald-500/40 hover:from-emerald-600 hover:to-teal-700 shadow-md shadow-emerald-500/25 focus:ring-emerald-500',
+    ghost:
+      'bg-gray-100/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-200/90 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 shadow-xs focus:ring-gray-500',
+    outline:
+      'bg-white/80 dark:bg-gray-900/80 border-2 border-indigo-500/70 dark:border-indigo-400/70 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-500 dark:hover:text-white shadow-sm focus:ring-indigo-500',
   };
   const sizes = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
+    sm: 'px-3.5 py-1.5 text-xs gap-1.5',
     md: 'px-4 py-2.5 text-sm gap-2',
     lg: 'px-6 py-3 text-base gap-2',
   };
 
   return (
-    <button className={`${base} ${variants[variant]} ${sizes[size]} ${className}`} disabled={loading || props.disabled} {...props}>
+    <button
+      className={`${base} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
+      disabled={loading || props.disabled}
+      {...props}
+    >
       {loading && <Loader2 className="w-4 h-4 animate-spin" />}
       {children}
     </button>

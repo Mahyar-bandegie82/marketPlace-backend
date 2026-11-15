@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Button, Input, Card, LoadingSpinner, EmptyState } from '../components/ui/Shared.jsx';
-import { MessageSquare, Plus, Trash2, Edit3, Star, Save } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Edit3, Star, Save, ThumbsUp, ThumbsDown, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function CommentsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -165,37 +165,46 @@ export default function CommentsPage() {
             <Card key={comment.id} className="p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white capitalize">
+                  <Link
+                    to={`/products/${comment.productId}`}
+                    className="inline-flex items-center gap-1.5 font-semibold text-gray-900 dark:text-white capitalize hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                  >
                     {comment.product?.productName || `Product #${comment.productId}`}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
+                    <ExternalLink size={13} />
+                  </Link>
+                  <div className="flex items-center gap-3 mt-1.5">
                     <div className="flex items-center gap-1">
                       <Star size={14} className="text-amber-400 fill-amber-400" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">
                         {comment.rating}
                       </span>
+                      <span className="text-xs text-gray-400">/ 100</span>
                     </div>
-                    <span className="text-xs text-gray-400">/ 100</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 font-medium">
+                      <ThumbsUp size={12} /> {comment.like || 0}
+                    </span>
+                    <span className="text-xs text-rose-600 dark:text-rose-400 inline-flex items-center gap-1 font-medium">
+                      <ThumbsDown size={12} /> {comment.dislike || 0}
+                    </span>
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     size="sm"
                     onClick={() => {
                       setEditingId(editingId === comment.id ? null : comment.id);
                       setEditForm({ rating: comment.rating, massage: comment.massage });
                     }}
                   >
-                    <Edit3 size={14} />
+                    <Edit3 size={14} /> Edit
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="danger"
                     size="sm"
                     onClick={() => handleDelete(comment.productId)}
-                    className="text-red-500"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={14} /> Delete
                   </Button>
                 </div>
               </div>
