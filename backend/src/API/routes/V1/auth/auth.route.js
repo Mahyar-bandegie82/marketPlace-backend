@@ -84,15 +84,10 @@ router.get('/credentialChange/reciveOtp', async (req, res) => {
 router.post('/signup', async (req, res) => {
     const body = await joiValidator(signUpSchema, req.body);
     const user = await signUp(body);
-    const familyId = crypto.randomUUID();
-    const accessToken = generateAccessToken(user.id);
-    const refreshToken = generateRefreshToken(user.id, familyId);
-    await saveRefreshToken(refreshToken, user.id, familyId);
-    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
     return res.status(201).json({
         value: sanitizeUser(user),
         message: 'Signed up successfully',
-        accessToken,
     });
 });
 
@@ -157,8 +152,15 @@ router.post('/signup/verify-otp', async (req, res) => {
     await verifyOtp(otp, user.email, 'signup');
     const updated = await markOtpVerified(user.id);
 
+    const familyId = crypto.randomUUID();
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id, familyId);
+    await saveRefreshToken(refreshToken, user.id, familyId);
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
     return res.status(200).json({
         message: "account verified successfully",
+        accessToken,
         value: sanitizeUser(updated),
     });
 });
@@ -172,8 +174,15 @@ router.post('/credentialChange/verify-otp', async (req, res) => {
     await verifyOtp(otp, user.email, 'passwordChange');
     const updated = await markOtpVerified(user.id);
 
+    const familyId = crypto.randomUUID();
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id, familyId);
+    await saveRefreshToken(refreshToken, user.id, familyId);
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
     return res.status(200).json({
         message: "account verified successfully",
+        accessToken,
         value: sanitizeUser(updated),
     });
 });

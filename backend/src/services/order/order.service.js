@@ -10,7 +10,11 @@ export async function createOrder(userId, { address, postalCode }) {
             where: { client: { userId } },
             select: { id: true, clientId: true },
         });
-        if (!cart) throw createError(404, "cart not found");
+        if (!cart) {
+            console.log(cart)
+            throw createError(404, "cart not found");
+        }
+            
 
         const items = await tx.cartItem.findMany({
             where: { shoppingCartId: cart.id },
@@ -68,7 +72,7 @@ export async function createOrder(userId, { address, postalCode }) {
         );
 
         await tx.client.update({
-            where: { id: userId },
+            where: { userId: userId },
             data: {
                 amountSpent: { increment: totalAmount }
             }
