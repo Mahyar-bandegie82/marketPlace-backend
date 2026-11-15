@@ -1,25 +1,36 @@
 import { useState, useEffect } from 'react';
 import api from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Button, Input, Card, LoadingSpinner, EmptyState, Badge } from '../components/ui/Shared.jsx';
+import { addGuestCartItem, addGuestFavourite } from '../lib/guestStorage.js';
+import { Button, Card, LoadingSpinner, EmptyState, Badge } from '../components/ui/Shared.jsx';
 import {
-  Search, ShoppingCart, Heart, Star, Store, ShieldCheck, Tag, Filter,
-  SlidersHorizontal, Package, Check, X, ArrowUpDown, ChevronDown, Layers, Info
+  Search,
+  ShoppingCart,
+  Heart,
+  Star,
+  ShieldCheck,
+  Tag,
+  Filter,
+  Package,
+  X,
+  ArrowUpDown,
+  Layers,
+  Info,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 export default function ListingsPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filters & Controls
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  // Filters & Controls initialized from URL query params
+  const [search, setSearch] = useState(() => searchParams.get('search') || '');
+  const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || '');
   const [selectedCondition, setSelectedCondition] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('products'); // 'products' | 'listings'
@@ -31,11 +42,20 @@ export default function ListingsPage() {
   // Detail Modal
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const fetchCatalog = async () => {
+  // Sync URL search param changes (e.g. from Navbar search)
+  useEffect(() => {
+    const qSearch = searchParams.get('search') || '';
+    const qCat = searchParams.get('category') || '';
+    setSearch(qSearch);
+    setSelectedCategory(qCat);
+  }, [searchParams]);
+
+  const fetchCatalog = async (overrideSearch) => {
     setLoading(true);
     try {
       const params = {};
-      if (search.trim()) params.search = search.trim();
+      const activeSearch = overrideSearch !== undefined ? overrideSearch : search;
+      if (activeSearch.trim()) params.search = activeSearch.trim();
       if (selectedCategory) params.category = selectedCategory;
       if (selectedCondition) params.condition = selectedCondition;
       if (sortBy) params.sort = sortBy;
@@ -47,7 +67,7 @@ export default function ListingsPage() {
 
       setProducts(prodRes.data?.products || []);
       setCategories(catRes.data?.categories || []);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load marketplace products');
     } finally {
       setLoading(false);
@@ -56,21 +76,35 @@ export default function ListingsPage() {
 
   useEffect(() => {
     fetchCatalog();
-  }, [selectedCategory, selectedCondition, sortBy]);
+  }, [selectedCategory, selectedCondition, sortBy, searchParams]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchCatalog();
+    const nextParams = {};
+    if (search.trim()) nextParams.search = search.trim();
+    if (selectedCategory) nextParams.category = selectedCategory;
+    setSearchParams(nextParams);
+    fetchCatalog(search);
   };
 
-  const handleAddToCart = async (listingId) => {
+  const handleAddToCart = async (listing, product) => {
+    const listingId = listing?.id || listing;
     if (!user) {
-      toast.error('Please log in to add items to your cart');
-      return navigate('/login');
+      addGuestCartItem({
+        listingId,
+        productName: product?.productName || `Listing #${listingId}`,
+        price: listing?.discountedPrice || listing?.price || 0,
+        condition: listing?.condition || 'NEW',
+        images: product?.images || [],
+      });
+      toast.success('Added to your shopping cart!');
+      return;
     }
+
     setCartLoadingId(listingId);
     try {
       await api.post('/users/addCartItem', { listingId });
+      window.dispatchEvent(new CustomEvent('cart:updated'));
       toast.success('Added to your shopping cart!');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Could not add to cart');
@@ -79,14 +113,16 @@ export default function ListingsPage() {
     }
   };
 
-  const handleAddToWishlist = async (productId) => {
+  const handleAddToWishlist = async (product) => {
     if (!user) {
-      toast.error('Please log in to save items to your wishlist');
-      return navigate('/login');
+      addGuestFavourite(product);
+      toast.success('Saved to wishlist!');
+      return;
     }
-    setFavLoadingId(productId);
+
+    setFavLoadingId(product.id);
     try {
-      await api.post(`/users/addFavoritedItems/${productId}`);
+      await api.post(`/users/addFavoritedItems/${product.id}`);
       toast.success('Saved to wishlist!');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Could not add to wishlist');
@@ -112,7 +148,7 @@ export default function ListingsPage() {
             Explore Products & Inventory
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Browse verified hardware, computer parts, and active seller listings in the database.
+            Browse verified hardware, computer parts, and active seller listings.
           </p>
         </div>
 
@@ -161,7 +197,8 @@ export default function ListingsPage() {
               variant="ghost"
               onClick={() => {
                 setSearch('');
-                setTimeout(fetchCatalog, 0);
+                setSearchParams(selectedCategory ? { category: selectedCategory } : {});
+                fetchCatalog('');
               }}
             >
               Reset
@@ -176,7 +213,10 @@ export default function ListingsPage() {
               <Filter size={12} /> Category:
             </span>
             <button
-              onClick={() => setSelectedCategory('')}
+              onClick={() => {
+                setSelectedCategory('');
+                setSearchParams(search ? { search } : {});
+              }}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 selectedCategory === ''
                   ? 'bg-indigo-600 text-white shadow-sm'
@@ -188,11 +228,14 @@ export default function ListingsPage() {
             {categories.map((c) => (
               <button
                 key={c.id || c.categoryName}
-                onClick={() =>
-                  setSelectedCategory(
-                    selectedCategory === c.categoryName ? '' : c.categoryName
-                  )
-                }
+                onClick={() => {
+                  const next = selectedCategory === c.categoryName ? '' : c.categoryName;
+                  setSelectedCategory(next);
+                  const params = {};
+                  if (search) params.search = search;
+                  if (next) params.category = next;
+                  setSearchParams(params);
+                }}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize ${
                   selectedCategory === c.categoryName
                     ? 'bg-indigo-600 text-white shadow-sm'
@@ -242,7 +285,7 @@ export default function ListingsPage() {
 
       {/* Main Grid View */}
       {loading ? (
-        <LoadingSpinner text="Querying database products and listings..." />
+        <LoadingSpinner text="Loading marketplace catalog..." />
       ) : viewMode === 'products' ? (
         products.length === 0 ? (
           <EmptyState
@@ -255,7 +298,8 @@ export default function ListingsPage() {
             {products.map((p) => {
               const bestListing = p.listings?.[0];
               const minPrice = bestListing?.discountedPrice || bestListing?.price;
-              const hasDiscount = bestListing?.discountedPrice > 0 && bestListing.discountedPrice < bestListing.price;
+              const hasDiscount =
+                bestListing?.discountedPrice > 0 && bestListing.discountedPrice < bestListing.price;
 
               return (
                 <Card
@@ -298,9 +342,9 @@ export default function ListingsPage() {
 
                     {/* Wishlist quick button */}
                     <button
-                      onClick={() => handleAddToWishlist(p.id)}
+                      onClick={() => handleAddToWishlist(p)}
                       disabled={favLoadingId === p.id}
-                      className="absolute top-3 right-3 p-2 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-md text-gray-600 dark:text-gray-300 hover:text-pink-500 dark:hover:text-pink-400 transition-colors"
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-md shadow-md text-gray-600 dark:text-gray-300 hover:text-pink-500 dark:hover:text-pink-400 transition-colors cursor-pointer"
                       aria-label="Save to Wishlist"
                     >
                       <Heart size={16} />
@@ -365,7 +409,7 @@ export default function ListingsPage() {
                             <Button
                               size="sm"
                               className="flex-1"
-                              onClick={() => handleAddToCart(bestListing.id)}
+                              onClick={() => handleAddToCart(bestListing, p)}
                               loading={cartLoadingId === bestListing.id}
                             >
                               <ShoppingCart size={14} /> Add to Cart
@@ -394,97 +438,98 @@ export default function ListingsPage() {
             })}
           </div>
         )
+      ) : /* Seller Listings View */
+      allListings.length === 0 ? (
+        <EmptyState
+          icon={Layers}
+          title="No seller inventory listings"
+          description="No active listings match your current criteria."
+        />
       ) : (
-        /* Seller Listings View */
-        allListings.length === 0 ? (
-          <EmptyState
-            icon={Layers}
-            title="No seller inventory listings"
-            description="No active listings match your current criteria."
-          />
-        ) : (
-          <div className="space-y-4">
-            {allListings.map((listing) => (
-              <Card
-                key={listing.id}
-                className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-indigo-500/50 transition-all"
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-16 h-16 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {listing.product.images?.[0] ? (
-                      <img
-                        src={listing.product.images[0]}
-                        alt={listing.product.productName}
-                        className="w-full h-full object-cover rounded-xl"
-                      />
-                    ) : (
-                      <Package size={24} className="text-gray-400" />
+        <div className="space-y-4">
+          {allListings.map((listing) => (
+            <Card
+              key={listing.id}
+              className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-indigo-500/50 transition-all"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-16 h-16 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {listing.product.images?.[0] ? (
+                    <img
+                      src={listing.product.images[0]}
+                      alt={listing.product.productName}
+                      className="w-full h-full object-cover rounded-xl"
+                    />
+                  ) : (
+                    <Package size={24} className="text-gray-400" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-gray-900 dark:text-white capitalize">
+                      {listing.product.productName}
+                    </h3>
+                    <Badge
+                      color={
+                        listing.condition === 'NEW'
+                          ? 'green'
+                          : listing.condition === 'BARELY_USED'
+                          ? 'blue'
+                          : 'yellow'
+                      }
+                    >
+                      {listing.condition.replace('_', ' ')}
+                    </Badge>
+                    <span className="text-xs text-gray-400">Listing #{listing.id}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Store:{' '}
+                    <strong className="text-gray-700 dark:text-gray-200">
+                      {listing.seller?.storeName || 'Verified Store'}
+                    </strong>
+                    {listing.seller?.trusted && (
+                      <span className="ml-2 inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                        <ShieldCheck size={12} /> Trusted
+                      </span>
                     )}
+                    <span className="mx-2">·</span>
+                    Available Quantity: <strong>{listing.quantity}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+                <div className="text-right">
+                  <div className="text-lg font-bold text-gray-900 dark:text-white">
+                    ${(listing.discountedPrice || listing.price).toLocaleString()}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-gray-900 dark:text-white capitalize">
-                        {listing.product.productName}
-                      </h3>
-                      <Badge
-                        color={
-                          listing.condition === 'NEW'
-                            ? 'green'
-                            : listing.condition === 'BARELY_USED'
-                            ? 'blue'
-                            : 'yellow'
-                        }
-                      >
-                        {listing.condition.replace('_', ' ')}
-                      </Badge>
-                      <span className="text-xs text-gray-400">Listing #{listing.id}</span>
+                  {listing.discountedPrice > 0 && listing.discountedPrice < listing.price && (
+                    <div className="text-xs text-gray-400 line-through">
+                      ${listing.price.toLocaleString()}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Store: <strong className="text-gray-700 dark:text-gray-200">{listing.seller?.storeName || 'Verified Store'}</strong>
-                      {listing.seller?.trusted && (
-                        <span className="ml-2 inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-                          <ShieldCheck size={12} /> Trusted
-                        </span>
-                      )}
-                      <span className="mx-2">·</span>
-                      Available Quantity: <strong>{listing.quantity}</strong>
-                    </p>
-                  </div>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">
-                      ${(listing.discountedPrice || listing.price).toLocaleString()}
-                    </div>
-                    {listing.discountedPrice > 0 && listing.discountedPrice < listing.price && (
-                      <div className="text-xs text-gray-400 line-through">
-                        ${listing.price.toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleAddToCart(listing.id)}
-                      loading={cartLoadingId === listing.id}
-                    >
-                      <ShoppingCart size={14} /> Buy Now
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setSelectedProduct(listing.product)}
-                    >
-                      Info
-                    </Button>
-                  </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleAddToCart(listing, listing.product)}
+                    loading={cartLoadingId === listing.id}
+                  >
+                    <ShoppingCart size={14} /> Add to Cart
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setSelectedProduct(listing.product)}
+                  >
+                    Info
+                  </Button>
                 </div>
-              </Card>
-            ))}
-          </div>
-        )
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
 
       {/* Product Detail Modal */}
@@ -557,7 +602,7 @@ export default function ListingsPage() {
                       </span>
                       <Button
                         size="sm"
-                        onClick={() => handleAddToCart(l.id)}
+                        onClick={() => handleAddToCart(l, selectedProduct)}
                         loading={cartLoadingId === l.id}
                       >
                         <ShoppingCart size={14} /> Add

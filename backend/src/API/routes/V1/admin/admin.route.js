@@ -1,4 +1,5 @@
 import express from 'express';
+import createError from 'http-errors';
 import { accessVerification } from "../../../middleware/authMiddleware.js";
 import {
     addProductCategory,
@@ -23,6 +24,12 @@ import { joiValidator } from "../../../../helper/helper.js";
 
 const router = express.Router();
 router.use(accessVerification, attachAbility);
+router.use((req, res, next) => {
+    if (!req.user?.admin || !req.user?.otpVerified) {
+        return next(createError(403, 'verified administrator privileges required'));
+    }
+    next();
+});
 
 // Retrieve all pending seller verification requests
 router.get('/sellerReq', authorize('read', 'Seller'), async (req, res) => {

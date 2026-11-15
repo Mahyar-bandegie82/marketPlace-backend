@@ -30,7 +30,7 @@ router.post("/createOrder", authorize("create", "Order"), async (req, res) => {
 });
 
 // Cancel a processing order by order ID
-router.put("/cancelOrder/:orderId", authorize("update", "Order"), async (req, res) => {
+router.put("/cancelOrder/:orderId", authorize("cancel", "Order"), async (req, res) => {
     const orderIdValidated = await joiValidator(OrderIdSchema, req.params);
     const userId = req.id;
     const order = await cancelOrder(userId, orderIdValidated.orderId);

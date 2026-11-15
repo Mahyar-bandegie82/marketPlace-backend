@@ -6,6 +6,14 @@ const prisma = prismaPool;
 // Create order from cart items, reserve inventory stock, and clear cart in a transaction
 export async function createOrder(userId, { address, postalCode }) {
     return prisma.$transaction(async (tx) => {
+        const userRecord = await tx.user.findUnique({
+            where: { id: userId },
+            select: { otpVerified: true },
+        });
+        if (!userRecord?.otpVerified) {
+            throw createError(403, "please verify your account via OTP before placing an order");
+        }
+
         const cart = await tx.shoppingCart.findFirst({
             where: { client: { userId } },
             select: { id: true, clientId: true },
@@ -86,52 +94,97 @@ export async function createOrder(userId, { address, postalCode }) {
 // Cancel a processing order, restore stock to inventory, and adjust spent amount
 export async function cancelOrder(userId, orderId) {
     return prisma.$transaction(async (tx) => {
-        const { count } = await tx.order.updateMany({
-            where: { id: orderId, orderStatus: 'PROCESSING', client: { userId } },
-            data: { orderStatus: 'CANCELED' },
+        const userRecord = await tx.user.findUnique({
+            where: { id: userId },
+            select: { otpVerified: true, client: { select: { id: true, amountSpent: true } } },
+        });
+        if (!userRecord?.otpVerified) {
+            throw createError(403, "please verify your account via OTP before canceling an order");
+        }
+        if (!userRecord?.client) {
+            throw createError(404, "client profile not found");
+        }
+
+        const parsedOrderId = Number(orderId);
+        const order = await tx.order.findFirst({
+            where: { id: parsedOrderId, clientId: userRecord.client.id },
+            include: {
+                orderItems: {
+                    select: { listingId: true, quantity: true, unitPrice: true },
+                },
+            },
         });
 
-        if (count === 0) {
-            const order = await tx.order.findFirst({
-                where: { id: orderId, client: { userId } },
-                select: { orderStatus: true },
-            });
-            if (!order) throw createError(404, "order not found");
+        if (!order) {
+            throw createError(404, "order not found");
+        }
+        if (order.orderStatus !== 'PROCESSING') {
             throw createError(409, `an order that is ${order.orderStatus} cannot be canceled`);
         }
 
-        const items = await tx.orderItems.findMany({
-            where: { orderId },
-            select: { listingId: true, quantity: true, unitPrice: true },
+        await tx.order.update({
+            where: { id: order.id },
+            data: { orderStatus: 'CANCELED' },
         });
+
+        const items = order.orderItems || [];
         const totalOrderPrice = items.reduce((sum, item) => {
             return sum + item.quantity * item.unitPrice;
         }, 0);
+
+        const nextAmountSpent = Math.max(0, (userRecord.client.amountSpent || 0) - totalOrderPrice);
         await tx.client.update({
-            where: { userId },
+            where: { id: userRecord.client.id },
             data: {
-                amountSpent: { decrement: totalOrderPrice }
-            }
+                amountSpent: nextAmountSpent,
+            },
         });
+
         for (const item of items) {
-            await tx.sellerInventory.update({
+            await tx.sellerInventory.updateMany({
                 where: { id: item.listingId },
                 data: { quantity: { increment: item.quantity } },
             });
         }
 
-        return { orderId, status: 'CANCELED' };
+        return { orderId: order.id, status: 'CANCELED' };
     });
 }
 
 // Update shipping address and postal code for an order in processing status
 export async function updateProcessingOrder(userId, orderId, { address, postalCode }) {
-    const orderUpdated = prisma.order.update({
-        where: { id: orderId, orderStatus: 'PROCESSING', client: { userId } },
-        data: { address, postalCode },
+    const userRecord = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { otpVerified: true, client: { select: { id: true } } },
+    });
+    if (!userRecord?.otpVerified) {
+        throw createError(403, "please verify your account via OTP before updating an order");
+    }
+    if (!userRecord?.client) {
+        throw createError(404, "client profile not found");
+    }
+
+    const parsedOrderId = Number(orderId);
+    const existingOrder = await prisma.order.findFirst({
+        where: { id: parsedOrderId, clientId: userRecord.client.id },
+        select: { id: true, orderStatus: true },
+    });
+    if (!existingOrder) {
+        throw createError(404, "order not found");
+    }
+    if (existingOrder.orderStatus !== 'PROCESSING') {
+        throw createError(409, `an order that is ${existingOrder.orderStatus} cannot be modified`);
+    }
+
+    const data = {};
+    if (address !== undefined) data.address = address;
+    if (postalCode !== undefined) data.postalCode = postalCode;
+
+    const orderUpdated = await prisma.order.update({
+        where: { id: existingOrder.id },
+        data,
         select: { id: true, orderStatus: true, address: true, postalCode: true },
     });
-    if (!orderUpdated) throw createError(404, "order not found or not in PROCESSING status");
     return orderUpdated;
 }
 
@@ -186,12 +239,11 @@ function toOrderDto(order) {
     };
 }
 
-// Retrieve processing and shipped orders for a client formatted as DTOs
+// Retrieve orders for a client formatted as DTOs
 export async function getActiveOrders(userId) {
     const orders = await prisma.order.findMany({
         where: {
             client: { userId },
-            orderStatus: { in: ['PROCESSING', 'SHIPPED'] },
         },
         orderBy: { orderDate: 'desc' },
         select: orderSelect,

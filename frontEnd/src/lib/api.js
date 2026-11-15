@@ -8,9 +8,13 @@ const api = axios.create({
 
 let accessToken = null;
 let refreshPromise = null;
+let lastRefreshSuccessAt = 0;
 
 export function setAccessToken(token) {
-  accessToken = token;
+  accessToken = token || null;
+  if (token) {
+    lastRefreshSuccessAt = Date.now();
+  }
 }
 
 export function getAccessToken() {
@@ -19,9 +23,41 @@ export function getAccessToken() {
 
 export function clearAccessToken() {
   accessToken = null;
+  lastRefreshSuccessAt = 0;
 }
 
-// Attach access token to every request
+/**
+ * Deduplicated silent refresh that prevents React StrictMode double-invocations
+ * or concurrent 401 interceptors from rotating the single-use refresh cookie twice.
+ */
+export function refreshAccessToken() {
+  if (accessToken && Date.now() - lastRefreshSuccessAt < 4000) {
+    return Promise.resolve(accessToken);
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = api
+      .put('/auth/refresh')
+      .then((res) => {
+        const newToken = res.data?.accessToken;
+        if (newToken) {
+          setAccessToken(newToken);
+        }
+        return newToken;
+      })
+      .catch((err) => {
+        clearAccessToken();
+        throw err;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
+// Attach access token to every request if present
 api.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -29,7 +65,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 → try to refresh
+// Handle 401 -> try to refresh once
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -37,34 +73,26 @@ api.interceptors.response.use(
 
     if (
       error.response?.status === 401 &&
+      original &&
       !original._retry &&
       !original.url?.includes('/auth/login') &&
       !original.url?.includes('/auth/signup') &&
-      !original.url?.includes('/auth/refresh')
+      !original.url?.includes('/auth/refresh') &&
+      !original.url?.includes('/auth/logout')
     ) {
       original._retry = true;
 
-      if (!refreshPromise) {
-        refreshPromise = api
-          .put('/auth/refresh')
-          .then((res) => {
-            const newToken = res.data.accessToken;
-            setAccessToken(newToken);
-            return newToken;
-          })
-          .catch((err) => {
-            clearAccessToken();
-            window.dispatchEvent(new CustomEvent('auth:logout'));
-            throw err;
-          })
-          .finally(() => {
-            refreshPromise = null;
-          });
+      try {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          original.headers.Authorization = `Bearer ${newToken}`;
+          return api(original);
+        }
+      } catch (refreshErr) {
+        clearAccessToken();
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+        return Promise.reject(refreshErr);
       }
-
-      const newToken = await refreshPromise;
-      original.headers.Authorization = `Bearer ${newToken}`;
-      return api(original);
     }
 
     return Promise.reject(error);

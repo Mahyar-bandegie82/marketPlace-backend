@@ -23,37 +23,34 @@ export default function App() {
         <Route path="products" element={<ListingsPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
-        <Route
-          path="cart"
-          element={<ProtectedRoute><CartPage /></ProtectedRoute>}
-        />
-        <Route
-          path="favourites"
-          element={<ProtectedRoute><FavouritesPage /></ProtectedRoute>}
-        />
-        <Route
-          path="orders"
-          element={<ProtectedRoute><OrdersPage /></ProtectedRoute>}
-        />
+        <Route path="cart" element={<CartPage />} />
+        <Route path="favourites" element={<FavouritesPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="comments" element={<CommentsPage />} />
+        <Route path="admin" element={<AdminPage />} />
         <Route
           path="checkout"
-          element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>}
-        />
-        <Route
-          path="profile"
-          element={<ProtectedRoute><ProfilePage /></ProtectedRoute>}
+          element={
+            <ProtectedRoute
+              requireVerified={true}
+              title="Sign In to Place Your Order"
+              description="You can browse and build your cart freely without a token, but an authenticated and OTP-verified account is required to complete checkout and place an order."
+            >
+              <CheckoutPage />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="seller"
-          element={<ProtectedRoute><SellerPage /></ProtectedRoute>}
-        />
-        <Route
-          path="comments"
-          element={<ProtectedRoute><CommentsPage /></ProtectedRoute>}
-        />
-        <Route
-          path="admin"
-          element={<ProtectedRoute><AdminPage /></ProtectedRoute>}
+          element={
+            <ProtectedRoute
+              title="Sign In to Become a Seller"
+              description="An authenticated account with a valid token is required to register a seller store or manage your seller inventory and promotions."
+            >
+              <SellerPage />
+            </ProtectedRoute>
+          }
         />
       </Route>
     </Routes>

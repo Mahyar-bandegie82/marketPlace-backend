@@ -1,12 +1,26 @@
-import { useState, useEffect } from 'react';
-import api from '../lib/api.js';
+import { useState, useEffect, useCallback } from 'react';
+import api, { setAccessToken } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Button, Input, Card, Badge } from '../components/ui/Shared.jsx';
-import { User, MapPin, Plus, Trash2, Edit3, Save, ShieldCheck, Mail, Send, CheckCircle2 } from 'lucide-react';
+import { Button, Input, Card, Badge, LoadingSpinner } from '../components/ui/Shared.jsx';
+import {
+  User,
+  MapPin,
+  Plus,
+  Trash2,
+  Edit3,
+  Save,
+  ShieldCheck,
+  Mail,
+  Send,
+  CheckCircle2,
+  LogIn,
+  UserPlus,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 export default function ProfilePage() {
-  const { user, updateUser } = useAuth();
+  const { user, loading: authLoading, updateUser } = useAuth();
   const [editForm, setEditForm] = useState({ phoneNumber: '', changes: {} });
   const [editing, setEditing] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
@@ -25,18 +39,26 @@ export default function ProfilePage() {
   const [editingAddrIndex, setEditingAddrIndex] = useState(null);
   const [editAddrForm, setEditAddrForm] = useState({ addressLine: '', postalCode: '' });
 
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
+    if (authLoading) return;
+    if (!user) {
+      setAddresses([]);
+      setAddrLoading(false);
+      return;
+    }
     try {
       const res = await api.get('/users/readAddress');
       setAddresses(res.data.address || []);
     } catch {
-      // ignore
+      setAddresses([]);
     } finally {
       setAddrLoading(false);
     }
-  };
+  }, [user, authLoading]);
 
-  useEffect(() => { fetchAddresses(); }, []);
+  useEffect(() => {
+    fetchAddresses();
+  }, [fetchAddresses]);
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
@@ -59,9 +81,10 @@ export default function ProfilePage() {
   const handleSendOtp = async () => {
     setOtpSending(true);
     try {
-      const endpoint = otpMode === 'signup' 
-        ? '/auth/signup/reciveOtp' 
-        : '/auth/credentialChange/reciveOtp';
+      const endpoint =
+        otpMode === 'signup'
+          ? '/auth/signup/reciveOtp'
+          : '/auth/credentialChange/reciveOtp';
       const res = await api.get(endpoint);
       toast.success(res.data.message || 'OTP sent to your email!');
     } catch (err) {
@@ -78,10 +101,14 @@ export default function ProfilePage() {
     }
     setOtpVerifying(true);
     try {
-      const endpoint = otpMode === 'signup' 
-        ? '/auth/signup/verify-otp' 
-        : '/auth/credentialChange/verify-otp';
+      const endpoint =
+        otpMode === 'signup'
+          ? '/auth/signup/verify-otp'
+          : '/auth/credentialChange/verify-otp';
       const res = await api.post(endpoint, { otp: otpCode });
+      if (res.data.accessToken) {
+        setAccessToken(res.data.accessToken);
+      }
       toast.success(res.data.message || 'Account verified successfully!');
       if (res.data.value) updateUser(res.data.value);
       setOtpCode('');
@@ -134,6 +161,74 @@ export default function ProfilePage() {
     }
   };
 
+  if (authLoading) return <LoadingSpinner text="Loading account information..." />;
+
+  if (!user) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <User className="text-indigo-500" /> Personal & Account Info
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Manage your personal credentials, email verification, and saved shipping addresses.
+          </p>
+        </div>
+
+        <Card className="p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-400 dark:text-gray-500">
+                <User size={32} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Guest Visitor</h2>
+                  <Badge color="gray">No Active Token</Badge>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-md">
+                  You can browse the entire marketplace and build your cart freely. Sign in or create an account to save shipping addresses and manage your personal credentials.
+                </p>
+              </div>
+            </div>
+            <div className="flex sm:flex-col gap-2.5 flex-shrink-0">
+              <Link to="/login">
+                <Button className="w-full">
+                  <LogIn size={16} /> Sign In
+                </Button>
+              </Link>
+              <Link to="/signup">
+                <Button variant="secondary" className="w-full">
+                  <UserPlus size={16} /> Create Account
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </Card>
+
+        <div className="grid sm:grid-cols-2 gap-6">
+          <Card className="p-6 space-y-2 opacity-80">
+            <div className="flex items-center gap-2 text-gray-900 dark:text-white font-semibold">
+              <ShieldCheck size={18} className="text-emerald-500" /> Email OTP Verification
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              Verify your email with a 6-digit one-time code after signing up or updating your account credentials.
+            </p>
+          </Card>
+
+          <Card className="p-6 space-y-2 opacity-80">
+            <div className="flex items-center gap-2 text-gray-900 dark:text-white font-semibold">
+              <MapPin size={18} className="text-indigo-500" /> Saved Shipping Addresses
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+              Store up to 3 delivery addresses and postal codes for instant one-click selection during order checkout.
+            </p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in space-y-8">
       {/* Profile Header */}
@@ -144,7 +239,9 @@ export default function ProfilePage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user?.userName || 'User'}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                {user?.userName || 'User'}
+              </h1>
               {user?.otpVerified ? (
                 <Badge color="green">
                   <CheckCircle2 size={12} className="mr-1" /> Verified
@@ -159,7 +256,14 @@ export default function ProfilePage() {
         </div>
 
         {!editing ? (
-          <Button variant="secondary" className="mt-6" onClick={() => { setEditing(true); setEditForm({ phoneNumber: user?.phoneNumber || '', changes: {} }); }}>
+          <Button
+            variant="secondary"
+            className="mt-6"
+            onClick={() => {
+              setEditing(true);
+              setEditForm({ phoneNumber: user?.phoneNumber || '', changes: {} });
+            }}
+          >
             <Edit3 size={16} /> Edit Profile & Credentials
           </Button>
         ) : (
@@ -173,26 +277,45 @@ export default function ProfilePage() {
             <Input
               label="New Username"
               value={editForm.changes.userName || ''}
-              onChange={(e) => setEditForm((f) => ({ ...f, changes: { ...f.changes, userName: e.target.value || undefined } }))}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  changes: { ...f.changes, userName: e.target.value || undefined },
+                }))
+              }
               placeholder="New username"
             />
             <Input
               label="New Email"
               type="email"
               value={editForm.changes.email || ''}
-              onChange={(e) => setEditForm((f) => ({ ...f, changes: { ...f.changes, email: e.target.value || undefined } }))}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  changes: { ...f.changes, email: e.target.value || undefined },
+                }))
+              }
               placeholder="new@email.com"
             />
             <Input
               label="New Password"
               type="password"
               value={editForm.changes.password || ''}
-              onChange={(e) => setEditForm((f) => ({ ...f, changes: { ...f.changes, password: e.target.value || undefined } }))}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  changes: { ...f.changes, password: e.target.value || undefined },
+                }))
+              }
               placeholder="New password (9-72 chars, 2 upper, 2 digits, 1 special)"
             />
             <div className="flex gap-3">
-              <Button type="submit" loading={editLoading}><Save size={16} /> Save Changes</Button>
-              <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button type="submit" loading={editLoading}>
+                <Save size={16} /> Save Changes
+              </Button>
+              <Button variant="ghost" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
             </div>
           </form>
         )}
@@ -264,7 +387,9 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">{addr.address}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Postal: {addr.postalCode}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Postal: {addr.postalCode}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -275,7 +400,10 @@ export default function ProfilePage() {
                         setEditingAddrIndex(null);
                       } else {
                         setEditingAddrIndex(i);
-                        setEditAddrForm({ addressLine: addr.address, postalCode: addr.postalCode });
+                        setEditAddrForm({
+                          addressLine: addr.address,
+                          postalCode: addr.postalCode,
+                        });
                       }
                     }}
                   >
@@ -297,18 +425,26 @@ export default function ProfilePage() {
                   <Input
                     label="Edit Address Line (10-80 chars)"
                     value={editAddrForm.addressLine}
-                    onChange={(e) => setEditAddrForm((f) => ({ ...f, addressLine: e.target.value }))}
+                    onChange={(e) =>
+                      setEditAddrForm((f) => ({ ...f, addressLine: e.target.value }))
+                    }
                   />
                   <Input
                     label="Edit Postal Code"
                     value={editAddrForm.postalCode}
-                    onChange={(e) => setEditAddrForm((f) => ({ ...f, postalCode: e.target.value }))}
+                    onChange={(e) =>
+                      setEditAddrForm((f) => ({ ...f, postalCode: e.target.value }))
+                    }
                   />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => handleSaveEditAddress(addr)}>
                       <Save size={14} /> Save
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingAddrIndex(null)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingAddrIndex(null)}
+                    >
                       Cancel
                     </Button>
                   </div>
@@ -318,8 +454,13 @@ export default function ProfilePage() {
           ))}
         </div>
 
-        <form onSubmit={handleAddAddress} className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Add New Address (Max 3)</h3>
+        <form
+          onSubmit={handleAddAddress}
+          className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+        >
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            Add New Address (Max 3)
+          </h3>
           <Input
             label="Address"
             value={newAddr.addressLine}

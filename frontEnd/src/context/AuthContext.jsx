@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api, { setAccessToken, clearAccessToken } from '../lib/api.js';
+import api, { setAccessToken, clearAccessToken, refreshAccessToken } from '../lib/api.js';
+import { getGuestCart, clearGuestCart } from '../lib/guestStorage.js';
 
 const AuthContext = createContext(null);
 
@@ -16,6 +17,19 @@ export function AuthProvider({ children }) {
       setUser(null);
       return null;
     }
+  }, []);
+
+  const syncGuestCartToServer = useCallback(async () => {
+    const guestItems = getGuestCart();
+    if (!guestItems.length) return;
+    for (const item of guestItems) {
+      try {
+        await api.post('/users/addCartItem', { listingId: Number(item.listingId) });
+      } catch {
+        // ignore if listing is unavailable or owned by user
+      }
+    }
+    clearGuestCart();
   }, []);
 
   const logout = useCallback(async () => {
@@ -38,34 +52,53 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('auth:logout', handler);
   }, []);
 
-  // Try to silently refresh on mount and fetch current user profile
+  // Silently refresh on mount (deduplicated against React StrictMode) and fetch current user profile
   useEffect(() => {
-    api
-      .put('/auth/refresh')
-      .then(async (res) => {
-        setAccessToken(res.data.accessToken);
-        await fetchProfile();
+    let active = true;
+
+    refreshAccessToken()
+      .then(async (token) => {
+        if (!active) return;
+        if (token) {
+          await fetchProfile();
+        } else {
+          setUser(null);
+        }
       })
       .catch(() => {
-        setUser(null);
+        if (active) setUser(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [fetchProfile]);
 
   const login = async (credentials) => {
     const res = await api.post('/auth/login', credentials);
-    setAccessToken(res.data.accessToken);
+    if (res.data.accessToken) {
+      setAccessToken(res.data.accessToken);
+    }
     setUser(res.data.value);
-    // Fetch full enriched profile
     await fetchProfile();
+    await syncGuestCartToServer();
     return res.data;
   };
 
   const signup = async (data) => {
     const res = await api.post('/auth/signup', data);
-    setAccessToken(res.data.accessToken);
-    setUser(res.data.value);
-    await fetchProfile();
+    if (res.data.accessToken) {
+      setAccessToken(res.data.accessToken);
+      setUser(res.data.value);
+      await fetchProfile();
+      await syncGuestCartToServer();
+    } else if (res.data.value) {
+      // Signup succeeded without immediate token generation (e.g., pending login / OTP verification)
+      setUser(res.data.value);
+    }
     return res.data;
   };
 

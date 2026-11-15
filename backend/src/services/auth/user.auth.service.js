@@ -88,7 +88,15 @@ export async function changeUserInfo(userId, json) {
 
 // Mark a user account as OTP verified
 export async function markOtpVerified(userId) {
-    return prisma.user.update({ where: { id: userId }, data: { otpVerified: true } });
+    return prisma.user.update({
+        where: { id: userId },
+        data: { otpVerified: true },
+        include: {
+            admin: { select: { id: true } },
+            seller: { select: { id: true, verified: true, storeName: true } },
+            client: { select: { id: true } },
+        },
+    });
 }
 
 // Set user account verification status to false

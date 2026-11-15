@@ -40,14 +40,18 @@ export function defineAbilityFor(user) {
 
         can('create', 'Seller');
 
-        can(['create', 'read'], 'Order', { clientId: client.id });
-        can('update', 'Order', ['address', 'postalCode'], { clientId: client.id, orderStatus: { in: ['PROCESSING'] } });
-        can('cancel', 'Order', {
-            clientId: client.id,
-            orderStatus: { in: ['PROCESSING'] },
-        });
+        can('read', 'Order', { clientId: client.id });
         can('read', 'OrderItems', { order: { clientId: client.id } });
-        can('create', 'OrderItems');
+
+        if (user.otpVerified) {
+            can('create', 'Order', { clientId: client.id });
+            can('update', 'Order', { clientId: client.id, orderStatus: { in: ['PROCESSING'] } });
+            can('cancel', 'Order', {
+                clientId: client.id,
+                orderStatus: { in: ['PROCESSING'] },
+            });
+            can('create', 'OrderItems');
+        }
     }
 
     if (seller) {
@@ -71,14 +75,16 @@ export function defineAbilityFor(user) {
         cannot('create', 'OrderItems', { listing: { sellerId: seller.id } });
     }
 
-    if (admin) {
-        can(['read', 'verify', 'trust', 'delete, unverify'], 'Seller');
+    if (admin && user.otpVerified) {
+        can(['read', 'verify', 'trust', 'delete', 'unverify'], 'Seller');
         can('read', 'SellerInventory');
         can('update', 'SellerInventory', ['isActive']);
         can('manage', ['Product', 'ProductCategory', 'Promotions', 'PromotionListing']);
-        can(['read', 'update'], 'Order');
+        can(['read', 'update', 'cancel'], 'Order');
         can('read', 'OrderItems');
-        can('delete', 'Comment');
+        can(['read', 'delete'], 'User');
+        can('read', 'Client');
+        can(['read', 'delete'], 'Comment');
     }
 
     return build();

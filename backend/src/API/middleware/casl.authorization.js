@@ -15,6 +15,7 @@ export async function attachAbility(req, res, next) {
         where: { id: req.id },
         select: {
             id: true,
+            otpVerified: true,
             admin:  { select: { id: true } },
             client: { select: { id: true } },
             seller: { select: { id: true, verified: true } },

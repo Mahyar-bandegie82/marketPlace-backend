@@ -22,9 +22,14 @@ export default function SignupPage() {
     setErrors({});
     setLoading(true);
     try {
-      await signup(form);
-      toast.success('Account created! Welcome!');
-      navigate('/');
+      const res = await signup(form);
+      if (res?.accessToken) {
+        toast.success('Account created! Welcome!');
+        navigate('/');
+      } else {
+        toast.success('Account created! Please sign in to get your access token.');
+        navigate('/login');
+      }
     } catch (err) {
       const data = err.response?.data;
       if (data?.details) {

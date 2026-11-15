@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Button, Input, Card } from '../components/ui/Shared.jsx';
 import { LogIn, Package } from 'lucide-react';
@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo = location.state?.from || '/';
   const [form, setForm] = useState({ userName: '', password: '', phoneNumber: '' });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -24,7 +26,7 @@ export default function LoginPage() {
     try {
       await login(form);
       toast.success('Welcome back!');
-      navigate('/');
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       const data = err.response?.data;
       if (data?.details) {

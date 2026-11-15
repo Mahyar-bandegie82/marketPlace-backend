@@ -73,9 +73,9 @@ router.get('/credentialChange/reciveOtp', async (req, res) => {
     if (!req.id) throw createError(401, "token not found");
     const user = await getProfile(req.id);
     if (user.otpVerified) throw createError(409, "account already verified");
-    const otp = generateOtp(user.email);
+    const otp = await generateOtp(user.email);
     await redisSaveOtp(otp, user.email, 'passwordChange');
-    await sendOtp(user.email, otp);
+    // await sendOtp(user.email, otp);
 
     return res.status(200).json({ message: `otp was successfully sent to your email with the address of ${maskEmail(user.email)}` });
 });
@@ -128,7 +128,7 @@ router.put('/refresh', async (req, res) => {
     const storedToken = await consumeRefreshToken(token);
     if (!storedToken) {
         await revokeFamily(decoded.familyId);
-        res.clearCookie("refreshToken");
+        res.clearCookie("refreshToken", CLEAR_COOKIE_OPTIONS);
         throw createError(401, "invalid or expired token");
     }
 
@@ -136,7 +136,7 @@ router.put('/refresh', async (req, res) => {
     const accessToken = generateAccessToken(decoded.id);
     await saveRefreshToken(refreshToken, decoded.id, decoded.familyId);
 
-    res.cookie("refreshToken", refreshToken, CLEAR_COOKIE_OPTIONS);
+    res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS);
     return res.status(200).json({ accessToken });
 });
 
