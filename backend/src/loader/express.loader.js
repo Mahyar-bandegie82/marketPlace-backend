@@ -36,6 +36,18 @@ export function expressLoader(app, domain, port) {
     app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
     app.get("/api-docs.json", (req, res) => res.json(swaggerDocs));
 
+    app.get("/", (req, res) => {
+        res.status(200).json({
+            status: "ok",
+            message: "Marketplace Backend API is running",
+            endpoints: {
+                products: "/api/V1/products",
+                categories: "/api/V1/products/categories",
+                docs: "/api-docs",
+            },
+        });
+    });
+
     app.use("/api", routeLoader());
     app.use("/api/V1", V1Loader());
     app.use(notFound);

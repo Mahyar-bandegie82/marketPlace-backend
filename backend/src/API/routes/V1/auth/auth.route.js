@@ -16,7 +16,9 @@ import { changeUserInfo, getProfile, login, sanitizeUser, signUp, markOtpVerifie
 import crypto from "crypto";
 import { redisSaveOtp, verifyOtp } from "../../../../services/redis/otp.service.js";
 
-await connectRedis();
+connectRedis().catch((err) => {
+    console.warn("Initial Redis connection skipped:", err.message);
+});
 const REFRESH_COOKIE_OPTIONS = {
     httpOnly: true,
     secure: true,
