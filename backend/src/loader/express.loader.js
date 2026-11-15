@@ -16,8 +16,14 @@ const DOCS_DIR = path.join(__dirname, "../docs");
 
 // Configure middleware, documentation, routes, and start the HTTP listener
 export function expressLoader(app, domain, port) {
+    const allowedOrigins = [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        process.env.FRONTEND_URL,
+    ].filter(Boolean);
+
     app.use(cors({
-        origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+        origin: allowedOrigins,
         credentials: true,
     }));
     app.use(morgan("dev"));
@@ -35,8 +41,10 @@ export function expressLoader(app, domain, port) {
     app.use(notFound);
     app.use(handleError);
 
-    app.listen(port, () => {
-        console.log(`Server is running on ${domain}`);
-        console.log(`Swagger Docs available at ${domain}/api-docs`);
-    });
+    if (!process.env.VERCEL) {
+        app.listen(port, () => {
+            console.log(`Server is running on ${domain}`);
+            console.log(`Swagger Docs available at ${domain}/api-docs`);
+        });
+    }
 }
