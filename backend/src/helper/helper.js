@@ -1,10 +1,11 @@
+import "dotenv/config";
+
 import bcrypt from 'bcrypt';
-import { Resend } from 'resend';
 import jwt from 'jsonwebtoken';
 import createError from "http-errors";
-import Joi from "joi";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 export const prismaPool = new PrismaClient();
 
@@ -46,27 +47,40 @@ export function generateRefreshToken(id, familyId) {
     return jwt.sign({ id, familyId }, process.env.REFRESH_TOKEN_SECRET, { algorithm: "HS256", expiresIn: '7d', jwtid: crypto.randomUUID() });
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+
 
 // Generate a 6-digit one-time password and dispatch it via email
+const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.GMAIL_USER,
+        pass: process.env.MARKETPLACE_OTP_CODE,
+    },
+});
+
 export async function generateOtp(email) {
-    const code = crypto.randomInt(100000, 999999);
+    const code = crypto.randomInt(100000, 1000000);
+    console.log("sending OTP to:", email);
 
-    const { data, error } = await resend.emails.send({
-        from: "onboarding@resend.dev",
-        to: "mahyarband1382@gmail.com",
-        subject: "pc marketplace authentication",
-        html: `<p>well come to pc marketplace</p>
-
-            <p>this is classified information dont share</p>
-
-            <p>${code}</p>`,
-    });
-
-    if (error) {
-        console.error("Error:", error);
-        return;
+    try {
+        const info = await transporter.sendMail({
+            from: `"PC Marketplace" <${process.env.GMAIL_USER}>`,
+            to: email,
+            subject: "PC Marketplace verification code",
+            text: `Your PC Marketplace verification code is ${code}. It expires in 2 minutes.`,
+            html: `
+                <p>Welcome to PC Marketplace!</p>
+                <p>Your verification code is:</p>
+                <h2>${code}</h2>
+                <p>It expires in 2 minutes. Do not share this code with anyone.</p>`,
+        });
+        console.log("accepted:", info.accepted, "rejected:", info.rejected, "response:", info.response);
+    } catch (err) {
+        console.error("Email error:", err);
+        throw new Error("Failed to send verification email");
     }
-    console.log("Sent:", data, "| code:", code);
+
     return code;
 }
