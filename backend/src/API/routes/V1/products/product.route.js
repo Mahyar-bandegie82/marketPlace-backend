@@ -1,9 +1,17 @@
 import express from "express";
-import { prismaPool } from "../../../../helper/helper.js"
+import { prismaPool } from "../../../../helper/helper.js";
 import createError from "http-errors";
+import { accessVerification, optionalAccessVerification } from "../../../middleware/authMiddleware.js";
+import { attachAbility } from "../../../middleware/casl.authorization.js";
 
 const router = express.Router();
 const prisma = prismaPool;
+
+router.use(optionalAccessVerification, attachAbility);
+
+// ==========================================
+// GET Routes (Public - No Token Required)
+// ==========================================
 
 // Get all categories
 router.get("/categories", async (req, res, next) => {
@@ -227,5 +235,10 @@ router.get("/:id", async (req, res, next) => {
         next(err);
     }
 });
+
+// ==========================================
+// Access Middleware (for Mutating Requests)
+// ==========================================
+router.use(accessVerification, attachAbility);
 
 export default router;

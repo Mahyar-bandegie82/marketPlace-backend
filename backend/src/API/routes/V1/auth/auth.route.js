@@ -1,6 +1,6 @@
 import express from "express";
-import { signUpSchema, loginSchema, changeCredentialsSchema, verifyOtpSchema } from "../../../../validation/auth/users.auth.js"
-import { accessVerification } from "../../../middleware/authMiddleware.js";
+import { signUpSchema, loginSchema, changeCredentialsSchema, verifyOtpSchema } from "../../../../validation/auth/users.auth.js";
+import { accessVerification, optionalAccessVerification } from "../../../middleware/authMiddleware.js";
 import { attachAbility, authorize } from "../../../middleware/casl.authorization.js";
 import { connectRedis } from "../../../../loader/redis.loader.js";
 import createError from "http-errors";
@@ -11,11 +11,10 @@ import {
     revokeFamily,
     saveRefreshToken
 } from "../../../../services/redis/refreshToken.service.js";
-import { generateAccessToken, generateOtp, generateRefreshToken, joiValidator } from "../../../../helper/helper.js";
+import { generateAccessToken, generateOtp, generateRefreshToken, joiValidator, prismaPool } from "../../../../helper/helper.js";
 import { changeUserInfo, getProfile, login, sanitizeUser, signUp, markOtpVerified, unverifyUser } from "../../../../services/auth/user.auth.service.js";
 import crypto from "crypto";
-import { redisSaveOtp,verifyOtp } from "../../../../services/redis/otp.service.js";
-
+import { redisSaveOtp, verifyOtp } from "../../../../services/redis/otp.service.js";
 
 await connectRedis();
 const REFRESH_COOKIE_OPTIONS = {
@@ -28,67 +27,19 @@ const { maxAge, ...CLEAR_COOKIE_OPTIONS } = REFRESH_COOKIE_OPTIONS;
 
 const router = express.Router();
 
-router.put('/refresh', async (req, res) => {
-    const token = req.cookies?.refreshToken;
-    if (!token) throw createError(401, "no token provided");
+router.use(optionalAccessVerification, attachAbility);
 
-    // invalid/expired JWTs throw and are mapped to 401 in the error middleware
-    const decoded = jwt.verify(token, process.env["REFRESH_TOKEN_SECRET"], { algorithms: ["HS256"] });
+function maskEmail(email) {
+    const [local, domain] = email.split('@');
+    return `${local.slice(0, 3)}${'*'.repeat(Math.max(local.length - 3, 0))}@${domain}`;
+}
 
-    const storedToken = await consumeRefreshToken(token)
-    if (!storedToken) {
-        await revokeFamily(decoded.familyId);
-        res.clearCookie("refreshToken");
-        throw createError(401, "invalid or expired token");
-    }
-    // rotate: remove the old token, issue and STORE a new one
-    const refreshToken = generateRefreshToken(decoded.id, decoded.familyId);
-    const accessToken = generateAccessToken(decoded.id);
-    await saveRefreshToken(refreshToken, decoded.id, decoded.familyId);
-
-    res.cookie("refreshToken", refreshToken, CLEAR_COOKIE_OPTIONS);
-    return res.status(200).json({ accessToken });
-})
-router.post('/signup', async (req, res) => {
-    const body = await joiValidator(signUpSchema, req.body);
-    const user = await signUp(body);
-    const familyId = crypto.randomUUID();
-    const accessToken = generateAccessToken(user.id)
-    const refreshToken = generateRefreshToken(user.id, familyId);
-    await saveRefreshToken(refreshToken, user.id, familyId)
-    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
-    return res.status(201).json({
-        value: sanitizeUser(user),
-        message: 'Signed up successfully',
-        accessToken,
-    });
-})
-router.post('/login', async (req, res) => {
-    const body = await joiValidator(loginSchema, req.body)
-    const user = await login(body);
-    const familyId = crypto.randomUUID();
-
-    const accessToken = generateAccessToken(user.id)
-    const refreshToken = generateRefreshToken(user.id, familyId);
-    await saveRefreshToken(refreshToken, user.id, familyId)
-    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
-    return res.status(200).json({
-        value: sanitizeUser(user),
-        message: 'Logged in successfully',
-        accessToken,
-    });
-})
-router.post('/logout', async (req, res) => {
-    res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) throw createError(401, "no token provided");
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, { algorithms: ["HS256"] });
-    if (decoded.familyId) await revokeFamily(decoded.familyId);
-    res.status(200).json({ message: 'Logged out successfully' });
-})
-router.use(accessVerification, attachAbility)
+// ==========================================
+// GET Routes (Before Access Middleware)
+// ==========================================
 
 router.get('/me', async (req, res) => {
+    if (!req.id) throw createError(401, "token not found");
     const user = await prismaPool.user.findUnique({
         where: { id: req.id },
         select: {
@@ -107,21 +58,104 @@ router.get('/me', async (req, res) => {
     return res.status(200).json({ user });
 });
 
-function maskEmail(email) {
-    const [local, domain] = email.split('@');
-    return `${local.slice(0, 3)}${'*'.repeat(Math.max(local.length - 3, 0))}@${domain}`;
-}
-
 router.get('/signup/reciveOtp', async (req, res) => {
+    if (!req.id) throw createError(401, "token not found");
     const user = await getProfile(req.id);
     if (user.otpVerified) throw createError(409, "account already verified");
     const otp = await generateOtp(user.email);
     await redisSaveOtp(otp, user.email, 'signup');
     // await sendOtp(user.email, otp);
-    const Email = user.email.split('@')
 
-    return res.status(200).json({ message: `otp was successfully sent to your email with the address of ${maskEmail(user.email)}` })
-})
+    return res.status(200).json({ message: `otp was successfully sent to your email with the address of ${maskEmail(user.email)}` });
+});
+
+router.get('/credentialChange/reciveOtp', async (req, res) => {
+    if (!req.id) throw createError(401, "token not found");
+    const user = await getProfile(req.id);
+    if (user.otpVerified) throw createError(409, "account already verified");
+    const otp = generateOtp(user.email);
+    await redisSaveOtp(otp, user.email, 'passwordChange');
+    await sendOtp(user.email, otp);
+
+    return res.status(200).json({ message: `otp was successfully sent to your email with the address of ${maskEmail(user.email)}` });
+});
+
+// ==========================================
+// Public Non-GET Routes (Auth entry points)
+// ==========================================
+
+// --- POST Routes ---
+router.post('/signup', async (req, res) => {
+    const body = await joiValidator(signUpSchema, req.body);
+    const user = await signUp(body);
+    const familyId = crypto.randomUUID();
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id, familyId);
+    await saveRefreshToken(refreshToken, user.id, familyId);
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+    return res.status(201).json({
+        value: sanitizeUser(user),
+        message: 'Signed up successfully',
+        accessToken,
+    });
+});
+
+router.post('/login', async (req, res) => {
+    const body = await joiValidator(loginSchema, req.body);
+    const user = await login(body);
+    const familyId = crypto.randomUUID();
+
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id, familyId);
+    await saveRefreshToken(refreshToken, user.id, familyId);
+    res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+    return res.status(200).json({
+        value: sanitizeUser(user),
+        message: 'Logged in successfully',
+        accessToken,
+    });
+});
+
+router.post('/logout', async (req, res) => {
+    res.clearCookie('refreshToken', CLEAR_COOKIE_OPTIONS);
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) throw createError(401, "no token provided");
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, { algorithms: ["HS256"] });
+    if (decoded.familyId) await revokeFamily(decoded.familyId);
+    res.status(200).json({ message: 'Logged out successfully' });
+});
+
+// --- PUT Routes ---
+router.put('/refresh', async (req, res) => {
+    const token = req.cookies?.refreshToken;
+    if (!token) throw createError(401, "no token provided");
+
+    // invalid/expired JWTs throw and are mapped to 401 in the error middleware
+    const decoded = jwt.verify(token, process.env["REFRESH_TOKEN_SECRET"], { algorithms: ["HS256"] });
+
+    const storedToken = await consumeRefreshToken(token);
+    if (!storedToken) {
+        await revokeFamily(decoded.familyId);
+        res.clearCookie("refreshToken");
+        throw createError(401, "invalid or expired token");
+    }
+    // rotate: remove the old token, issue and STORE a new one
+    const refreshToken = generateRefreshToken(decoded.id, decoded.familyId);
+    const accessToken = generateAccessToken(decoded.id);
+    await saveRefreshToken(refreshToken, decoded.id, decoded.familyId);
+
+    res.cookie("refreshToken", refreshToken, CLEAR_COOKIE_OPTIONS);
+    return res.status(200).json({ accessToken });
+});
+
+// ==========================================
+// Access Middleware (Requires Access Token)
+// ==========================================
+router.use(accessVerification, attachAbility);
+
+// ==========================================
+// Protected POST Routes
+// ==========================================
 
 router.post('/signup/verify-otp', async (req, res) => {
     const { otp } = await joiValidator(verifyOtpSchema, req.body);
@@ -137,17 +171,6 @@ router.post('/signup/verify-otp', async (req, res) => {
     });
 });
 
-router.get('/credentialChange/reciveOtp', async (req, res) => {
-    const user = await getProfile(req.id);
-    if (user.otpVerified) throw createError(409, "account already verified");
-    const otp = generateOtp(user.email);
-    await redisSaveOtp(otp, user.email, 'passwordChange');
-    await sendOtp(user.email, otp);
-    const Email = user.email.split('@')
-
-    return res.status(200).json({ message: `otp was successfully sent to your email with the address of ${maskEmail(user.email)}` })
-})
-
 router.post('/credentialChange/verify-otp', async (req, res) => {
     const { otp } = await joiValidator(verifyOtpSchema, req.body);
     const user = await getProfile(req.id);
@@ -161,6 +184,10 @@ router.post('/credentialChange/verify-otp', async (req, res) => {
         value: sanitizeUser(updated),
     });
 });
+
+// ==========================================
+// Protected PUT Routes
+// ==========================================
 
 router.put('/editinfo', authorize('update', 'User'), async (req, res) => {
     const body = await joiValidator(changeCredentialsSchema, req.body);
@@ -184,4 +211,5 @@ router.put('/editinfo', authorize('update', 'User'), async (req, res) => {
         newInfo: sanitizeUser(changed),
     });
 });
-export default router
+
+export default router;
