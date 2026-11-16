@@ -32,6 +32,9 @@ try {
         env: { ...process.env, DATABASE_URL: cleanUrl },
     });
     console.log("Prisma schema push completed.");
+
+    const { injectOnlineDatabase } = await import("../services/admin/injector.js");
+    await injectOnlineDatabase({ force: false });
 } catch (err) {
-    console.warn("Prisma db push warning:", err.message);
+    console.warn("Prisma db push / seed warning:", err.message);
 }
