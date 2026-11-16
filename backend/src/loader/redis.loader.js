@@ -2,16 +2,50 @@ import dotenv from 'dotenv';
 dotenv.config();
 import redis from 'redis';
 
-// In-memory fallback store used automatically if Redis is unreachable in serverless environments
+// In-memory fallback store used automatically if Redis is unreachable
 const memoryStore = new Map();
 const memorySets = new Map();
 
-const rawClient = process.env.REDIS_URL
+function resolveRedisUrl() {
+    const candidates = [
+        process.env.REDIS_URL_REDIS_URL,
+        process.env.REDIS_URL_KV_URL,
+        process.env.REDIS_URL,
+        process.env.KV_URL,
+        process.env.STORAGE_REDIS_URL,
+        process.env.STORAGE_KV_URL,
+        ...Object.entries(process.env)
+            .filter(
+                ([k, v]) =>
+                    typeof v === 'string' &&
+                    (v.startsWith('redis://') || v.startsWith('rediss://')) &&
+                    !v.includes('localhost') &&
+                    !v.includes('127.0.0.1') &&
+                    (k.includes('REDIS') || k.includes('KV') || k.endsWith('_URL'))
+            )
+            .map(([, v]) => v),
+    ].filter(
+        (v) =>
+            typeof v === 'string' &&
+            v.trim() &&
+            !v.includes('localhost') &&
+            !v.includes('127.0.0.1')
+    );
+
+    return (
+        candidates[0] ||
+        'rediss://default:gQAAAAAAAll8AAIgcDIyZDMzZWZjOGMyY2U0YmQ0ODM3ZDA4MTM2MGJiYjg3Ng@working-ghoul-153980.upstash.io:6379'
+    );
+}
+
+const resolvedRedisUrl = resolveRedisUrl();
+
+const rawClient = resolvedRedisUrl
     ? redis.createClient({
-          url: process.env.REDIS_URL,
+          url: resolvedRedisUrl,
           socket: {
-              connectTimeout: 3500,
-              reconnectStrategy: false,
+              connectTimeout: 5000,
+              reconnectStrategy: (retries) => (retries < 2 ? 250 : false),
           },
       })
     : null;
@@ -22,17 +56,29 @@ if (rawClient) {
     });
 }
 
+let connectingPromise = null;
+
 // Connect the Redis client if configured and not already open
 const connectRedis = async () => {
-    if (!rawClient) return;
-    if (!rawClient.isOpen) {
-        try {
-            await rawClient.connect();
+    if (!rawClient) return false;
+    if (rawClient.isOpen) return true;
+    if (connectingPromise) return connectingPromise;
+
+    connectingPromise = rawClient
+        .connect()
+        .then(() => {
             console.log('redis has been connected');
-        } catch (err) {
+            return true;
+        })
+        .catch((err) => {
             console.warn('Redis unavailable, using in-memory fallback:', err.message);
-        }
-    }
+            return false;
+        })
+        .finally(() => {
+            connectingPromise = null;
+        });
+
+    return connectingPromise;
 };
 
 // Disconnect the Redis client if currently connected
@@ -45,12 +91,17 @@ const disconnectRedis = async () => {
 
 const isReady = () => Boolean(rawClient && rawClient.isOpen);
 
+const ensureReady = async () => {
+    if (isReady()) return true;
+    return await connectRedis();
+};
+
 const redisClient = {
     get isOpen() {
         return isReady();
     },
     async get(key) {
-        if (isReady()) return rawClient.get(key);
+        if (await ensureReady()) return rawClient.get(key);
         const entry = memoryStore.get(key);
         if (!entry) return null;
         if (entry.expiresAt && Date.now() > entry.expiresAt) {
@@ -60,7 +111,7 @@ const redisClient = {
         return entry.value;
     },
     async set(key, value, options = {}) {
-        if (isReady()) return rawClient.set(key, value, options);
+        if (await ensureReady()) return rawClient.set(key, value, options);
         if (options.NX) {
             const existing = await this.get(key);
             if (existing !== null) return null;
@@ -70,13 +121,13 @@ const redisClient = {
         return 'OK';
     },
     async getDel(key) {
-        if (isReady()) return rawClient.getDel(key);
+        if (await ensureReady()) return rawClient.getDel(key);
         const val = await this.get(key);
         memoryStore.delete(key);
         return val;
     },
     async del(keys) {
-        if (isReady()) return rawClient.del(keys);
+        if (await ensureReady()) return rawClient.del(keys);
         const list = Array.isArray(keys) ? keys : [keys];
         for (const k of list) {
             memoryStore.delete(k);
@@ -85,7 +136,7 @@ const redisClient = {
         return list.length;
     },
     async incr(key) {
-        if (isReady()) return rawClient.incr(key);
+        if (await ensureReady()) return rawClient.incr(key);
         const current = Number((await this.get(key)) || 0) + 1;
         const existing = memoryStore.get(key);
         memoryStore.set(key, {
@@ -95,7 +146,7 @@ const redisClient = {
         return current;
     },
     async expire(key, seconds) {
-        if (isReady()) return rawClient.expire(key, seconds);
+        if (await ensureReady()) return rawClient.expire(key, seconds);
         const existing = memoryStore.get(key);
         if (existing) {
             existing.expiresAt = Date.now() + seconds * 1000;
@@ -103,35 +154,41 @@ const redisClient = {
         return 1;
     },
     async sAdd(key, member) {
-        if (isReady()) return rawClient.sAdd(key, member);
+        if (await ensureReady()) return rawClient.sAdd(key, member);
         if (!memorySets.has(key)) memorySets.set(key, new Set());
         memorySets.get(key).add(String(member));
         return 1;
     },
     async sMembers(key) {
-        if (isReady()) return rawClient.sMembers(key);
+        if (await ensureReady()) return rawClient.sMembers(key);
         return Array.from(memorySets.get(key) || []);
     },
     multi() {
-        if (isReady()) return rawClient.multi();
         const ops = [];
         return {
-            set: (k, v, opts) => {
-                ops.push(() => redisClient.set(k, v, opts));
+            set(k, v, opts) {
+                ops.push({ type: 'set', args: [k, v, opts] });
                 return this;
             },
-            sAdd: (k, m) => {
-                ops.push(() => redisClient.sAdd(k, m));
+            sAdd(k, m) {
+                ops.push({ type: 'sAdd', args: [k, m] });
                 return this;
             },
-            expire: (k, s) => {
-                ops.push(() => redisClient.expire(k, s));
+            expire(k, s) {
+                ops.push({ type: 'expire', args: [k, s] });
                 return this;
             },
-            exec: async () => {
+            async exec() {
+                if (await ensureReady()) {
+                    const m = rawClient.multi();
+                    for (const op of ops) {
+                        m[op.type](...op.args);
+                    }
+                    return m.exec();
+                }
                 const results = [];
                 for (const op of ops) {
-                    results.push(await op());
+                    results.push(await redisClient[op.type](...op.args));
                 }
                 return results;
             },
