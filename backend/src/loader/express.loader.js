@@ -23,7 +23,12 @@ export function expressLoader(app, domain, port) {
     ].filter(Boolean);
 
     app.use(cors({
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+                return callback(null, true);
+            }
+            return callback(null, false);
+        },
         credentials: true,
     }));
     app.use(morgan("dev"));
