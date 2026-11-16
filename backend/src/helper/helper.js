@@ -7,7 +7,50 @@ import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-export const prismaPool = new PrismaClient();
+function resolveDatabaseUrl() {
+    const candidates = [
+        process.env.DATABASE_URL_UNPOOLED,
+        process.env.POSTGRES_URL_NON_POOLING,
+        process.env.DATABASE_URL,
+        process.env.POSTGRES_PRISMA_URL,
+        process.env.POSTGRES_URL,
+        ...Object.entries(process.env)
+            .filter(
+                ([k, v]) =>
+                    typeof v === "string" &&
+                    (v.startsWith("postgresql://") || v.startsWith("postgres://")) &&
+                    !v.includes("localhost") &&
+                    (k.includes("DATABASE_URL") || k.includes("POSTGRES") || k.endsWith("_URL"))
+            )
+            .map(([, v]) => v),
+    ].filter((v) => typeof v === "string" && v.trim() && !v.includes("localhost"));
+
+    const chosen =
+        candidates[0] ||
+        "postgresql://neondb_owner:npg_RTVW2o4hNbDk@ep-damp-silence-bb7ycyr4.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require";
+
+    return chosen.replace(/([?&])channel_binding=require(&?)/, (_, p1, p2) =>
+        p2 ? p1 : ""
+    );
+}
+
+process.env.DATABASE_URL = resolveDatabaseUrl();
+process.env.ACCESS_TOKEN_SECRET =
+    process.env.ACCESS_TOKEN_SECRET ||
+    "a4b7dbc77c22b00feff65ec932633fb6f6773414294c4e4175e9d0e3222ab579f0e7e17afb79c4f594b50a6f9d2e4d95f58426d7d6803e774e34a63aaac80ffa";
+process.env.REFRESH_TOKEN_SECRET =
+    process.env.REFRESH_TOKEN_SECRET ||
+    "bb8a9485d1faa464ae4ef71dfc39813dcbb4ecb0a9b1a77f71ae4bb28e42e989bb0f7730c93da9387d7e0b97a56e77b240e7d5beaa55d0c664a2ba51972d343f";
+process.env.GMAIL_USER = process.env.GMAIL_USER || "mahyartheswe1382@gmail.com";
+process.env.MARKETPLACE_OTP_CODE = process.env.MARKETPLACE_OTP_CODE || "bloxwikjzjsaabtv";
+
+export const prismaPool = new PrismaClient({
+    datasources: {
+        db: {
+            url: process.env.DATABASE_URL,
+        },
+    },
+});
 
 // Hash a plain text password using bcrypt
 export async function hashPassword(password) {

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "postinstall": "prisma generate",
-    "build": "prisma generate",
+    "build": "node ./src/loader/dbPush.js && prisma generate",
     "start": "nodemon ./src/server.js",
     "swagger": "nodemon --ext js,yaml ./src/server.js"
   },
