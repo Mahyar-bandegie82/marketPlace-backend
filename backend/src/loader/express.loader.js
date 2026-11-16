@@ -31,10 +31,13 @@ export function expressLoader(app, domain, port) {
     app.use(express.urlencoded({ extended: true }));
     app.use(cookieParser());
 
-    const swaggerDocs = loadSwaggerDocs(DOCS_DIR, domain);
-
-    app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-    app.get("/api-docs.json", (req, res) => res.json(swaggerDocs));
+    try {
+        const swaggerDocs = loadSwaggerDocs(DOCS_DIR, domain);
+        app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+        app.get("/api-docs.json", (req, res) => res.json(swaggerDocs));
+    } catch (err) {
+        console.warn("Swagger initialization skipped:", err.message);
+    }
 
     app.get("/", (req, res) => {
         res.status(200).json({
