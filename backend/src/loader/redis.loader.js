@@ -19,23 +19,16 @@ function resolveRedisUrl() {
                 ([k, v]) =>
                     typeof v === 'string' &&
                     (v.startsWith('redis://') || v.startsWith('rediss://')) &&
-                    !v.includes('localhost') &&
-                    !v.includes('127.0.0.1') &&
                     (k.includes('REDIS') || k.includes('KV') || k.endsWith('_URL'))
             )
             .map(([, v]) => v),
-    ].filter(
-        (v) =>
-            typeof v === 'string' &&
-            v.trim() &&
-            !v.includes('localhost') &&
-            !v.includes('127.0.0.1')
+    ].filter((v) => typeof v === 'string' && v.trim());
+
+    const cloudCandidate = candidates.find(
+        (v) => !v.includes('localhost') && !v.includes('127.0.0.1')
     );
 
-    return (
-        candidates[0] ||
-        'rediss://default:gQAAAAAAAll8AAIgcDIyZDMzZWZjOGMyY2U0YmQ0ODM3ZDA4MTM2MGJiYjg3Ng@working-ghoul-153980.upstash.io:6379'
-    );
+    return cloudCandidate || candidates[0] || null;
 }
 
 const resolvedRedisUrl = resolveRedisUrl();

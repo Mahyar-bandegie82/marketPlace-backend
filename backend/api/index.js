@@ -12,15 +12,15 @@ function resolveDatabaseUrl() {
                 ([k, v]) =>
                     typeof v === "string" &&
                     (v.startsWith("postgresql://") || v.startsWith("postgres://")) &&
-                    !v.includes("localhost") &&
                     (k.includes("DATABASE_URL") || k.includes("POSTGRES") || k.endsWith("_URL"))
             )
             .map(([, v]) => v),
-    ].filter((v) => typeof v === "string" && v.trim() && !v.includes("localhost"));
+    ].filter((v) => typeof v === "string" && v.trim());
 
-    const chosen =
-        candidates[0] ||
-        "postgresql://neondb_owner:npg_RTVW2o4hNbDk@ep-damp-silence-bb7ycyr4.c-15.us-east-1.aws.neon.tech/neondb?sslmode=require";
+    const cloudCandidate = candidates.find((v) => !v.includes("localhost") && !v.includes("127.0.0.1"));
+    const chosen = cloudCandidate || candidates[0];
+
+    if (!chosen) return undefined;
 
     return chosen.replace(/([?&])channel_binding=require(&?)/, (_, p1, p2) =>
         p2 ? p1 : ""
@@ -29,7 +29,10 @@ function resolveDatabaseUrl() {
 
 export default async function handler(req, res) {
     try {
-        process.env.DATABASE_URL = resolveDatabaseUrl();
+        const dbUrl = resolveDatabaseUrl();
+        if (dbUrl) {
+            process.env.DATABASE_URL = dbUrl;
+        }
         if (!appPromise) {
             process.env.VERCEL = "1";
             appPromise = import("../src/server.js").then((mod) => mod.default);
