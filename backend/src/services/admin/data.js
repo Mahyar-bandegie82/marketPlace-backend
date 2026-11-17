@@ -1,11 +1,12 @@
-
+import "dotenv/config";
 
 export const user = [
     {
-        userName: "mahyarBandegie",
-        password: "@MahyaR8213",
-        phoneNumber: "09999002985",
-        email: "mahyarband1382@gmail.com",
+        // Real admin account: credentials are read from env at runtime (never committed)
+        userName: process.env.SEED_ADMIN_USERNAME,
+        password: process.env.SEED_ADMIN_PASSWORD,
+        phoneNumber: process.env.SEED_ADMIN_PHONE,
+        email: process.env.SEED_ADMIN_EMAIL,
         otpVerified: true
     },
     { userName: "aliRezaei",       password: "@AliRez4471",  phoneNumber: "09121234501", email: "ali.rezaei91@gmail.com",       otpVerified: true },

@@ -29,16 +29,39 @@ function getCategoriesForProductIndex(idx) {
 }
 
 export async function injectOnlineDatabase({ force = false } = {}) {
+    const adminEnv = {
+        userName: process.env.SEED_ADMIN_USERNAME,
+        password: process.env.SEED_ADMIN_PASSWORD,
+        phoneNumber: process.env.SEED_ADMIN_PHONE,
+        email: process.env.SEED_ADMIN_EMAIL,
+    };
+    const missingAdminVars = Object.entries({
+        SEED_ADMIN_USERNAME: adminEnv.userName,
+        SEED_ADMIN_PASSWORD: adminEnv.password,
+        SEED_ADMIN_PHONE: adminEnv.phoneNumber,
+        SEED_ADMIN_EMAIL: adminEnv.email,
+    })
+        .filter(([, v]) => !v)
+        .map(([k]) => k);
+
+    if (missingAdminVars.length > 0) {
+        console.warn(
+            `Seeding skipped: missing env variables ${missingAdminVars.join(", ")}. ` +
+            `Add them to your .env (local) or Vercel Environment Variables (production).`
+        );
+        return { skipped: true, reason: "missing admin env variables", missingAdminVars };
+    }
+
     const existingProductCount = await prisma.product.count();
     if (existingProductCount >= 50 && !force) {
-        console.log(`Database already has ${existingProductCount} products. Ensuring admin accounts exist...`);
-        const mahyar = await prisma.user.findUnique({ where: { phoneNumber: "09999002985" } });
-        if (mahyar) {
-            await prisma.user.update({ where: { id: mahyar.id }, data: { otpVerified: true } });
+        console.log(`Database already has ${existingProductCount} products. Ensuring admin account exists...`);
+        const adminUser = await prisma.user.findUnique({ where: { phoneNumber: adminEnv.phoneNumber } });
+        if (adminUser) {
+            await prisma.user.update({ where: { id: adminUser.id }, data: { otpVerified: true } });
             await prisma.admin.upsert({
-                where: { userId: mahyar.id },
+                where: { userId: adminUser.id },
                 update: {},
-                create: { userId: mahyar.id },
+                create: { userId: adminUser.id },
             });
         }
         return { skipped: true, existingProductCount };
@@ -200,12 +223,6 @@ export async function injectOnlineDatabase({ force = false } = {}) {
         listings: sellerInventory.length,
         orders: order.length,
         comments: comment.length,
-        adminCredentials: {
-            userName: user[0].userName,
-            phoneNumber: user[0].phoneNumber,
-            password: user[0].password,
-            email: user[0].email,
-        },
     };
 }
 
